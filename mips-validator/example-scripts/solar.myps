@@ -1,0 +1,19 @@
+alias sensor d0
+
+alias x r0
+
+define SolarPanelHash -2045627372
+define H0 0 # some multiple of 90
+
+start:
+yield
+horizontal:
+l x sensor Horizontal
+sub x H0 x
+sb SolarPanelHash Horizontal x
+vertical:
+l x sensor Vertical
+sub x 75 x
+div x x 1.5
+sb SolarPanelHash Vertical x
+j start

@@ -1,0 +1,15 @@
+[package]
+name = "mips-validator"
+version = "0.1.0"
+edition = "2018"
+default-run = "mips-validator"
+
+[dependencies]
+mips-parser = { path = "../mips-parser" }
+mips-state = { path = "../mips-state" }
+ron = "0.6.0"
+serde = { version = "1.0.114", features = ["derive"] }
+serde_closure = "0.3.1"
+serde_json = "1.0.57"
+
+

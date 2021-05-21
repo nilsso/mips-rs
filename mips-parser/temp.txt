@@ -1,0 +1,395 @@
+[
+    Pair {
+        rule: program,
+        span: Span {
+            str: "alias sensor d0\n\nalias x r0\n\ndefine SolarPanelHash -2045627372\ndefine H0 0 # some multiple of 90\n\nstart:\nyield\nhorizontal:\nl x sensor Horizontal\n",
+            start: 0,
+            end: 145,
+        },
+        inner: [
+            Pair {
+                rule: fun,
+                span: Span {
+                    str: "alias sensor d0",
+                    start: 0,
+                    end: 15,
+                },
+                inner: [
+                    Pair {
+                        rule: f_alias,
+                        span: Span {
+                            str: "alias sensor d0",
+                            start: 0,
+                            end: 15,
+                        },
+                        inner: [
+                            Pair {
+                                rule: token,
+                                span: Span {
+                                    str: "sensor",
+                                    start: 6,
+                                    end: 12,
+                                },
+                                inner: [],
+                            },
+                            Pair {
+                                rule: reg,
+                                span: Span {
+                                    str: "d0",
+                                    start: 13,
+                                    end: 15,
+                                },
+                                inner: [
+                                    Pair {
+                                        rule: dev,
+                                        span: Span {
+                                            str: "d0",
+                                            start: 13,
+                                            end: 15,
+                                        },
+                                        inner: [
+                                            Pair {
+                                                rule: dev_recur,
+                                                span: Span {
+                                                    str: "d0",
+                                                    start: 13,
+                                                    end: 15,
+                                                },
+                                                inner: [
+                                                    Pair {
+                                                        rule: dev_base,
+                                                        span: Span {
+                                                            str: "d0",
+                                                            start: 13,
+                                                            end: 15,
+                                                        },
+                                                        inner: [
+                                                            Pair {
+                                                                rule: int,
+                                                                span: Span {
+                                                                    str: "0",
+                                                                    start: 14,
+                                                                    end: 15,
+                                                                },
+                                                                inner: [],
+                                                            },
+                                                        ],
+                                                    },
+                                                ],
+                                            },
+                                        ],
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                ],
+            },
+            Pair {
+                rule: blank,
+                span: Span {
+                    str: "\n",
+                    start: 16,
+                    end: 17,
+                },
+                inner: [],
+            },
+            Pair {
+                rule: fun,
+                span: Span {
+                    str: "alias x r0",
+                    start: 17,
+                    end: 27,
+                },
+                inner: [
+                    Pair {
+                        rule: f_alias,
+                        span: Span {
+                            str: "alias x r0",
+                            start: 17,
+                            end: 27,
+                        },
+                        inner: [
+                            Pair {
+                                rule: token,
+                                span: Span {
+                                    str: "x",
+                                    start: 23,
+                                    end: 24,
+                                },
+                                inner: [],
+                            },
+                            Pair {
+                                rule: reg,
+                                span: Span {
+                                    str: "r0",
+                                    start: 25,
+                                    end: 27,
+                                },
+                                inner: [
+                                    Pair {
+                                        rule: mem,
+                                        span: Span {
+                                            str: "r0",
+                                            start: 25,
+                                            end: 27,
+                                        },
+                                        inner: [
+                                            Pair {
+                                                rule: mem_recur,
+                                                span: Span {
+                                                    str: "r0",
+                                                    start: 25,
+                                                    end: 27,
+                                                },
+                                                inner: [
+                                                    Pair {
+                                                        rule: mem_base,
+                                                        span: Span {
+                                                            str: "r0",
+                                                            start: 25,
+                                                            end: 27,
+                                                        },
+                                                        inner: [
+                                                            Pair {
+                                                                rule: int,
+                                                                span: Span {
+                                                                    str: "0",
+                                                                    start: 26,
+                                                                    end: 27,
+                                                                },
+                                                                inner: [],
+                                                            },
+                                                        ],
+                                                    },
+                                                ],
+                                            },
+                                        ],
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                ],
+            },
+            Pair {
+                rule: blank,
+                span: Span {
+                    str: "\n",
+                    start: 28,
+                    end: 29,
+                },
+                inner: [],
+            },
+            Pair {
+                rule: fun,
+                span: Span {
+                    str: "define SolarPanelHash -2045627372",
+                    start: 29,
+                    end: 62,
+                },
+                inner: [
+                    Pair {
+                        rule: f_define,
+                        span: Span {
+                            str: "define SolarPanelHash -2045627372",
+                            start: 29,
+                            end: 62,
+                        },
+                        inner: [
+                            Pair {
+                                rule: token,
+                                span: Span {
+                                    str: "SolarPanelHash",
+                                    start: 36,
+                                    end: 50,
+                                },
+                                inner: [],
+                            },
+                            Pair {
+                                rule: num,
+                                span: Span {
+                                    str: "-2045627372",
+                                    start: 51,
+                                    end: 62,
+                                },
+                                inner: [],
+                            },
+                        ],
+                    },
+                ],
+            },
+            Pair {
+                rule: fun,
+                span: Span {
+                    str: "define H0 0",
+                    start: 63,
+                    end: 74,
+                },
+                inner: [
+                    Pair {
+                        rule: f_define,
+                        span: Span {
+                            str: "define H0 0",
+                            start: 63,
+                            end: 74,
+                        },
+                        inner: [
+                            Pair {
+                                rule: token,
+                                span: Span {
+                                    str: "H0",
+                                    start: 70,
+                                    end: 72,
+                                },
+                                inner: [],
+                            },
+                            Pair {
+                                rule: num,
+                                span: Span {
+                                    str: "0",
+                                    start: 73,
+                                    end: 74,
+                                },
+                                inner: [],
+                            },
+                        ],
+                    },
+                ],
+            },
+            Pair {
+                rule: blank,
+                span: Span {
+                    str: "\n",
+                    start: 97,
+                    end: 98,
+                },
+                inner: [],
+            },
+            Pair {
+                rule: label,
+                span: Span {
+                    str: "start:",
+                    start: 98,
+                    end: 104,
+                },
+                inner: [
+                    Pair {
+                        rule: token,
+                        span: Span {
+                            str: "start",
+                            start: 98,
+                            end: 103,
+                        },
+                        inner: [],
+                    },
+                ],
+            },
+            Pair {
+                rule: fun,
+                span: Span {
+                    str: "yield",
+                    start: 105,
+                    end: 110,
+                },
+                inner: [
+                    Pair {
+                        rule: f_yield,
+                        span: Span {
+                            str: "yield",
+                            start: 105,
+                            end: 110,
+                        },
+                        inner: [],
+                    },
+                ],
+            },
+            Pair {
+                rule: label,
+                span: Span {
+                    str: "horizontal:",
+                    start: 111,
+                    end: 122,
+                },
+                inner: [
+                    Pair {
+                        rule: token,
+                        span: Span {
+                            str: "horizontal",
+                            start: 111,
+                            end: 121,
+                        },
+                        inner: [],
+                    },
+                ],
+            },
+            Pair {
+                rule: fun,
+                span: Span {
+                    str: "l x sensor Horizontal",
+                    start: 123,
+                    end: 144,
+                },
+                inner: [
+                    Pair {
+                        rule: f_l,
+                        span: Span {
+                            str: "l x sensor Horizontal",
+                            start: 123,
+                            end: 144,
+                        },
+                        inner: [
+                            Pair {
+                                rule: mem,
+                                span: Span {
+                                    str: "x",
+                                    start: 125,
+                                    end: 126,
+                                },
+                                inner: [
+                                    Pair {
+                                        rule: alias,
+                                        span: Span {
+                                            str: "x",
+                                            start: 125,
+                                            end: 126,
+                                        },
+                                        inner: [],
+                                    },
+                                ],
+                            },
+                            Pair {
+                                rule: dev,
+                                span: Span {
+                                    str: "sensor",
+                                    start: 127,
+                                    end: 133,
+                                },
+                                inner: [
+                                    Pair {
+                                        rule: alias,
+                                        span: Span {
+                                            str: "sensor",
+                                            start: 127,
+                                            end: 133,
+                                        },
+                                        inner: [],
+                                    },
+                                ],
+                            },
+                            Pair {
+                                rule: token,
+                                span: Span {
+                                    str: "Horizontal",
+                                    start: 134,
+                                    end: 144,
+                                },
+                                inner: [],
+                            },
+                        ],
+                    },
+                ],
+            },
+        ],
+    },
+]

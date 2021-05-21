@@ -1,4 +1,5 @@
 use mips_parser::prelude::*;
+use mips_state::prelude::*;
 
 fn pair(s: &str) -> Node {
     Node::new(MipsParser::parse(Rule::reg, s).expect("").next().unwrap())

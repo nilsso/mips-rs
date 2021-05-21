@@ -1,7 +1,2 @@
-[package]
-name = "mips-rs"
-version = "0.1.0"
-edition = "2018"
-
 [workspace]
-members = ["mips-parser", "mips-state"]
+members = ["mips-parser", "mips-state", "mips-validator"]

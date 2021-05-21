@@ -3,6 +3,11 @@ name = "mips-state"
 version = "0.1.0"
 edition = "2018"
 
+[lib]
+name = "mips_state"
+path = "src/lib.rs"
+
 [dependencies]
+mips-parser = { path = "../mips-parser" }
 thiserror = "1.0.20"
 
