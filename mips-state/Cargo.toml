@@ -7,7 +7,12 @@ edition = "2018"
 name = "mips_state"
 path = "src/lib.rs"
 
+[[bin]]
+name = "mips_state_test"
+path = "src/main.rs"
+
 [dependencies]
 mips-parser = { path = "../mips-parser" }
-thiserror = "1.0.20"
+util = { path = "../util" }
+#thiserror = "1.0.20"
 

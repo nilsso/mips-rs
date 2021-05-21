@@ -1,35 +1,29 @@
 use std::{fmt, fmt::Display};
+use std::iter::once;
 
 use itertools::join;
 use pest::iterators::Pair;
 
 use crate::Rule;
 
-use super::{Function, Arg};
+use super::{Func, Arg};
 
 /// Expression node.
 ///
 /// Stationeers MIPS code consists of only expressions, in the form of labels
 /// or function calls.
-#[derive(PartialEq, Debug)]
-pub enum Expr {
-    ExprLabel(String),
-    ExprFunc(Function, Vec<Arg>),
-}
+#[derive(Clone, PartialEq, Debug)]
+pub struct Expr(pub Func, pub Vec<Arg>);
 
 impl Expr {
     /// New expression node from Pest pair.
-    pub fn new(pair: Pair<Rule>) -> Self {
+    pub fn from_pair(pair: Pair<Rule>) -> Self {
         match pair.as_rule() {
-            Rule::label => {
+            Rule::expr => {
                 let inner = pair.into_inner().next().unwrap();
-                Expr::ExprLabel(inner.as_str().into())
-            }
-            Rule::fun => {
-                let inner = pair.into_inner().next().unwrap();
-                let f = Function::new(inner.as_rule());
-                let args = inner.into_inner().map(|arg| Arg::new(arg)).collect();
-                Expr::ExprFunc(f, args)
+                let func = Func::from_rule(inner.as_rule());
+                let args = inner.into_inner().map(|arg| Arg::from_pair(arg)).collect();
+                Expr(func, args)
             }
             _ => unreachable!(),
         }
@@ -38,11 +32,14 @@ impl Expr {
 
 impl Display for Expr {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Expr::ExprLabel(l) => write!(fmt, "{}:", l),
-            Expr::ExprFunc(f, args) => {
-                let f = format!("{:?}", f).to_lowercase();
-                write!(fmt, "{} {}", f, join(args.iter(), " "))
+        let func = &self.0;
+        let args = &self.1;
+        match func {
+            Func::Label => write!(fmt, "{}:", args[0]),
+            _ => {
+                let f = format!("{}", func);
+                let i = once(f).chain(args.iter().map(|arg| arg.to_string()));
+                write!(fmt, "{}", join(i, " "))
             },
         }
     }

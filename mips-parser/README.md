@@ -1,6 +1,11 @@
+mips-parser 🚀
+==============
 
-**Important note:**
-Aliases, labels and definitions are all stored in the same table!
-i.e. an alias will overwrite a label, a label will overwrite a definition, etc.
+The parser component of `mips-rs`.
 
-TODO: Remake register_builder but over Memory and Register
+## Development notes:
+
+On stationeering:
+- labels and aliases of same name do not play well together
+- later labels and aliases seem to nullify even prior definitions
+

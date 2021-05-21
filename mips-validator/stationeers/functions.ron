@@ -1,4 +1,0 @@
-Function(
-    name: "sin",
-    arg_types: [Register, Value],
-)

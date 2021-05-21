@@ -2,34 +2,48 @@ use std::{fmt, fmt::Display};
 
 use pest::iterators::Pair;
 
+use util::impl_is_as_inner;
+
 use crate::Rule;
 use crate::InnerUnchecked;
 
-use super::{Memory, Device, Value};
+use super::{Mem, Dev, Val};
 
 /// Function argument node.
-#[derive(PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum Arg {
-    ArgMem(Memory),
-    ArgDev(Device),
-    ArgVal(Value),
+    ArgMem(Mem),
+    ArgDev(Dev),
+    ArgVal(Val),
     ArgToken(String),
 }
 
 impl Arg {
-    pub fn new(pair: Pair<Rule>) -> Self {
+    pub fn from_pair(pair: Pair<Rule>) -> Self {
         let rule = pair.as_rule();
         match rule {
-            Rule::mem | Rule::mem_recur => Arg::ArgMem(Memory::new(pair)),
-            Rule::dev | Rule::dev_recur => Arg::ArgDev(Device::new(pair)),
-            Rule::reg => Arg::new(pair.inner()),
-            Rule::value => Arg::ArgVal(Value::new(pair)),
-            Rule::num => Arg::ArgVal(Value::ValLit(pair.as_str().parse().unwrap())),
-            Rule::token => Arg::ArgToken(pair.as_str().into()),
+            Rule::reg => Arg::from_pair(pair.inner()),
+            Rule::mem | Rule::mem_lit => Arg::ArgMem(Mem::from_pair(pair)),
+            Rule::dev | Rule::dev_lit => Arg::ArgDev(Dev::from_pair(pair)),
+            Rule::val => Arg::ArgVal(Val::from_pair(pair)),
+            Rule::tkn => Arg::ArgToken(pair.as_str().into()),
+            Rule::num => Arg::ArgVal(Val::ValLit(pair.as_str().parse().unwrap())),
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn as_string(&self) -> &String {
+        match self {
+            Self::ArgToken(s) => s,
             _ => unreachable!(),
         }
     }
 }
+
+impl_is_as_inner!(Arg, Arg::ArgMem,   is_mem,   as_mem,   mem,   Mem);
+impl_is_as_inner!(Arg, Arg::ArgDev,   is_dev,   as_dev,   dev,   Dev);
+impl_is_as_inner!(Arg, Arg::ArgVal,   is_val,   as_val,   val,   Val);
+impl_is_as_inner!(Arg, Arg::ArgToken, is_token, as_token, token, String);
 
 impl Display for Arg {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {

@@ -1,2 +1,3 @@
 [workspace]
-members = ["mips-parser", "mips-state", "mips-validator"]
+members = ["mips-parser", "mips-state", "util"]
+exclude = ["mips-validator"]

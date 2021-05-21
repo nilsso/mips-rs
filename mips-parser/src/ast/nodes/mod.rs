@@ -2,17 +2,17 @@
 //!
 //! See [`mips_parser::ast`](super) for a full description of each node and the overall structure of the AST tree.
 mod arg;
-mod device;
+mod dev;
 mod expr;
-mod function;
-mod memory;
+mod func;
+mod mem;
 mod program;
-mod value;
+mod val;
 
 pub use arg::Arg;
-pub use device::Device;
+pub use dev::Dev;
 pub use expr::Expr;
-pub use function::Function;
-pub use memory::Memory;
+pub use func::Func;
+pub use mem::Mem;
 pub use program::Program;
-pub use value::Value;
+pub use val::Val;

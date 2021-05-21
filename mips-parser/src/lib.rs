@@ -33,7 +33,7 @@ pub enum MipsParserError {
 
 /// Everything in one use statement.
 pub mod prelude {
-    pub use crate::ast::nodes::{Arg, Device, Expr, Function, Memory, Program, Value};
+    pub use crate::ast::nodes::{Arg, Dev, Expr, Mem, Program, Val, Func};
     pub use crate::{build_ast_from_path, build_ast_from_str};
     pub use crate::{InnerUnchecked, MipsParser, MipsParserError, Rule};
     pub use pest::Parser;
@@ -46,7 +46,7 @@ pub fn build_ast_from_str(source: &str) -> Result<Program, MipsParserError> {
     let mut pairs =
         MipsParser::parse(Rule::program, &source).map_err(|e| MipsParserError::ParserError(e))?;
     let program_pair = pairs.next().unwrap();
-    let program = Program::new(program_pair);
+    let program = Program::from_pair(program_pair);
     Ok(program)
 }
 
