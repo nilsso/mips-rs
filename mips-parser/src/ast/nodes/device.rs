@@ -1,3 +1,5 @@
+use std::{fmt, fmt::Display};
+
 use pest::iterators::Pair;
 
 use crate::Rule;
@@ -37,6 +39,16 @@ impl Device {
                 }
             }
             _ => unreachable!(),
+        }
+    }
+}
+
+impl Display for Device {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Device::DevBase(i) => write!(fmt, "d{}", i),
+            Device::DevAlias(a) => write!(fmt, "{}", a),
+            Device::Dev(m) => write!(fmt, "d{}", m),
         }
     }
 }

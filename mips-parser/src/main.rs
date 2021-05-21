@@ -1,5 +1,6 @@
 #![allow(unused_imports)]
 #![allow(unused_variables)]
+#![allow(unused_mut)]
 #![allow(dead_code)]
 
 // use std::collections::HashMap;
@@ -72,9 +73,27 @@ use mips_parser::prelude::*;
 // }
 
 fn main() {
+    // let source = "add x r1 r2";
+    // let res = MipsParser::parse(Rule::fun, &source).unwrap();
+    // let res = Expr::new(res.inner());
+    // let res = Arg::ArgDev(Device::DevAlias("device".into()));
+    // println!("{:?}", res);
+    // println!("{}", res);
+
+    use std::fs::read_to_string;
     let path = "./example-scripts/solar.mips";
-    let program = build_ast_from_path(path).unwrap();
+    let source = read_to_string(path).unwrap();
+    println!("{}", source);
+    let pairs = MipsParser::parse(Rule::program, &source);
+    let program_pair = pairs.unwrap().next().unwrap();
+    let program = Program::new(program_pair);
+    println!("---");
+    for expr in program.iter() {
+        println!("{:?}", expr);
+    }
+    println!("---");
+    println!("{}", program);
     // for expr in program.iter() {
-        // println!("{:?}", expr);
+    //     println!("{:?}", expr);
     // }
 }

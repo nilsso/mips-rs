@@ -1,5 +1,3 @@
-#![feature(bool_to_option)]
-#![feature(stmt_expr_attributes)]
 //! Parser for [Stationeers][stationeers] [MIPS][mips] code using [Pest][pest].
 //!
 //! The [MipsParser] can be used standalone to validate Stationeers MIPS source code,
@@ -11,6 +9,9 @@
 //! [pest]: https://pest.rs/
 //! [pairs]: https://docs.rs/pest/2.1.3/pest/iterators/struct.Pairs.html
 //! [ast]: https://en.wikipedia.org/wiki/Abstract_syntax_tree
+#![feature(bool_to_option)]
+#![feature(stmt_expr_attributes)]
+
 use std::path::PathBuf;
 
 use pest::iterators::{Pair, Pairs};
@@ -42,11 +43,8 @@ use ast::nodes::Program;
 pub use pest::Parser;
 
 pub fn build_ast_from_str(source: &str) -> Result<Program, MipsParserError> {
-    println!("{}", source);
     let mut pairs =
         MipsParser::parse(Rule::program, &source).map_err(|e| MipsParserError::ParserError(e))?;
-        // MipsParser::parse(Rule::program, &source).expect("Parsing error");
-    println!("{:#?}", pairs);
     let program_pair = pairs.next().unwrap();
     let program = Program::new(program_pair);
     Ok(program)

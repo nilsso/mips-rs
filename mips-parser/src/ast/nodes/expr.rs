@@ -1,3 +1,6 @@
+use std::{fmt, fmt::Display};
+
+use itertools::join;
 use pest::iterators::Pair;
 
 use crate::Rule;
@@ -33,3 +36,14 @@ impl Expr {
     }
 }
 
+impl Display for Expr {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Expr::ExprLabel(l) => write!(fmt, "{}:", l),
+            Expr::ExprFunc(f, args) => {
+                let f = format!("{:?}", f).to_lowercase();
+                write!(fmt, "{} {}", f, join(args.iter(), " "))
+            },
+        }
+    }
+}

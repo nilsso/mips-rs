@@ -3,7 +3,7 @@ alias sensor d0
 alias x r0
 
 define SolarPanelHash -2045627372
-define H0 0 # some multiple of 90
+define H0 0
 
 start:
 yield

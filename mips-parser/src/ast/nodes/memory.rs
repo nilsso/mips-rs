@@ -1,3 +1,5 @@
+use std::{fmt, fmt::Display};
+
 use pest::iterators::Pair;
 
 use crate::Rule;
@@ -35,6 +37,16 @@ impl Memory {
                 }
             }
             _ => unreachable!(),
+        }
+    }
+}
+
+impl Display for Memory {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Memory::MemBase(i) => write!(fmt, "r{}", i),
+            Memory::MemAlias(a) => write!(fmt, "{}", a),
+            Memory::Mem(m) => write!(fmt, "r{}", m),
         }
     }
 }

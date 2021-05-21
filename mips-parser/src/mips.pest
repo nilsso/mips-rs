@@ -1,6 +1,3 @@
-COMMENT = _{ "#" ~ (!NEWLINE ~ ANY)* }
-WHITESPACE = _{ " " }
-
 /* ============================================================================================== */
 /* Numbers: integers with possible decimals and exponents */
 /* ============================================================================================== */
@@ -42,7 +39,7 @@ mem = { mem_recur | (!dev_recur ~ alias) }
 dev = { dev_recur | (!mem_recur ~ alias) }
 
 /* memory or device register (only actually used by the `alias` function) */
-reg = { mem | dev }
+reg = { mem_recur | dev_recur | alias }
 
 /* ============================================================================================== */
 /* Values: literal or from a memory register */
@@ -61,76 +58,76 @@ label = ${ token ~ ":" }
 /* ============================================================================================== */
 
 /* Device IO */
-f_bdns   = { "bdns"   ~ dev   ~ value }
-f_bdnsal = { "bdnsal" ~ dev   ~ value }
-f_bdse   = { "bdse"   ~ dev   ~ value }
-f_bdseal = { "bdseal" ~ dev   ~ value }
-f_brdns  = { "brdns"  ~ dev   ~ value }
-f_brdse  = { "brdse"  ~ dev   ~ value }
+f_bdns   = { "bdns "   ~ dev   ~ value }
+f_bdnsal = { "bdnsal " ~ dev   ~ value }
+f_bdse   = { "bdse "   ~ dev   ~ value }
+f_bdseal = { "bdseal " ~ dev   ~ value }
+f_brdns  = { "brdns "  ~ dev   ~ value }
+f_brdse  = { "brdse "  ~ dev   ~ value }
 /* TODO: Not too sure if some of these arguments types are strictly tokens */
-f_l      = { "l"      ~ mem   ~ dev   ~ token }
-f_lb     = { "lb"     ~ mem   ~ value ~ token ~ value }
-f_lr     = { "lr"     ~ mem   ~ dev   ~ value ~ value }
-f_ls     = { "ls"     ~ mem   ~ dev   ~ value ~ token }
-f_s      = { "s"      ~ dev   ~ token ~ value }
-f_sb     = { "sb"     ~ value ~ token ~ value }
+f_l      = { "l "      ~ mem   ~ dev   ~ token }
+f_lb     = { "lb "     ~ mem   ~ value ~ token ~ value }
+f_lr     = { "lr "     ~ mem   ~ dev   ~ value ~ value }
+f_ls     = { "ls "     ~ mem   ~ dev   ~ value ~ token }
+f_s      = { "s "      ~ dev   ~ token ~ value }
+f_sb     = { "sb "     ~ value ~ token ~ value }
 f_group_io = _{
     f_bdns | f_bdnsal | f_bdse | f_bdseal | f_brdns | f_brdse |
     f_l    | f_lb     | f_lr   | f_ls     | f_s     | f_sb
 }
 
 /* Flow Control, Branches and Jumps */
-f_bap    = { "bap"    ~ value ~ value ~ value ~ value }
-f_bapal  = { "bapal"  ~ value ~ value ~ value ~ value }
-f_bapz   = { "bapz"   ~ value ~ value ~ value }
-f_bapzal = { "bapzal" ~ value ~ value ~ value }
-f_beq    = { "beq"    ~ value ~ value ~ value }
-f_beqal  = { "beqal"  ~ value ~ value ~ value }
-f_beqz   = { "beqz"   ~ value ~ value }
-f_beqzal = { "beqzal" ~ value ~ value }
-f_bge    = { "bge"    ~ value ~ value ~ value }
-f_bgeal  = { "bgeal"  ~ value ~ value ~ value }
-f_bgez   = { "bgez"   ~ value ~ value }
-f_bgezal = { "bgezal" ~ value ~ value }
-f_bgt    = { "bgt"    ~ value ~ value ~ value }
-f_bgtal  = { "bgtal"  ~ value ~ value ~ value }
-f_bgtz   = { "bgtz"   ~ value ~ value }
-f_bgtzal = { "bgtzal" ~ value ~ value }
-f_ble    = { "ble"    ~ value ~ value ~ value }
-f_bleal  = { "bleal"  ~ value ~ value ~ value }
-f_blez   = { "blez"   ~ value ~ value }
-f_blezal = { "blezal" ~ value ~ value }
-f_blt    = { "blt"    ~ value ~ value ~ value }
-f_bltal  = { "bltal"  ~ value ~ value ~ value }
-f_bltz   = { "bltz"   ~ value ~ value }
-f_bltzal = { "bltzal" ~ value ~ value }
-f_bna    = { "bna"    ~ value ~ value ~ value ~ value }
-f_bnaal  = { "bnaal"  ~ value ~ value ~ value ~ value }
-f_bnaz   = { "bnaz"   ~ value ~ value ~ value }
-f_bnazal = { "bnazal" ~ value ~ value ~ value }
-f_bne    = { "bne"    ~ value ~ value ~ value }
-f_bneal  = { "bneal"  ~ value ~ value ~ value }
-f_bnez   = { "bnez"   ~ value ~ value }
-f_bnezal = { "bnezal" ~ value ~ value }
-f_brap   = { "brap"   ~ value ~ value ~ value ~ value }
-f_brapz  = { "brapz"  ~ value ~ value ~ value }
-f_breq   = { "breq"   ~ value ~ value ~ value }
-f_breqz  = { "breqz"  ~ value ~ value }
-f_brge   = { "brge"   ~ value ~ value ~ value }
-f_brgez  = { "brgez"  ~ value ~ value }
-f_brgt   = { "brgt"   ~ value ~ value ~ value }
-f_brgtz  = { "brgtz"  ~ value ~ value }
-f_brle   = { "brle"   ~ value ~ value ~ value }
-f_brlez  = { "brlez"  ~ value ~ value }
-f_brlt   = { "brlt"   ~ value ~ value   ~ value }
-f_brltz  = { "brltz"  ~ value ~ value }
-f_brna   = { "brna"   ~ value ~ value   ~ value   ~ value }
-f_brnaz  = { "brnaz"  ~ value ~ value   ~ value   ~ value }
-f_brne   = { "brne"   ~ value ~ value   ~ value }
-f_brnez  = { "brnez"  ~ value ~ value }
-f_j      = { "j"      ~ value }
-f_jal    = { "jal"    ~ value }
-f_jr     = { "jr"     ~ value }
+f_bap    = { "bap "    ~ value ~ value ~ value ~ value }
+f_bapal  = { "bapal "  ~ value ~ value ~ value ~ value }
+f_bapz   = { "bapz "   ~ value ~ value ~ value }
+f_bapzal = { "bapzal " ~ value ~ value ~ value }
+f_beq    = { "beq "    ~ value ~ value ~ value }
+f_beqal  = { "beqal "  ~ value ~ value ~ value }
+f_beqz   = { "beqz "   ~ value ~ value }
+f_beqzal = { "beqzal " ~ value ~ value }
+f_bge    = { "bge "    ~ value ~ value ~ value }
+f_bgeal  = { "bgeal "  ~ value ~ value ~ value }
+f_bgez   = { "bgez "   ~ value ~ value }
+f_bgezal = { "bgezal " ~ value ~ value }
+f_bgt    = { "bgt "    ~ value ~ value ~ value }
+f_bgtal  = { "bgtal "  ~ value ~ value ~ value }
+f_bgtz   = { "bgtz "   ~ value ~ value }
+f_bgtzal = { "bgtzal " ~ value ~ value }
+f_ble    = { "ble "    ~ value ~ value ~ value }
+f_bleal  = { "bleal "  ~ value ~ value ~ value }
+f_blez   = { "blez "   ~ value ~ value }
+f_blezal = { "blezal " ~ value ~ value }
+f_blt    = { "blt "    ~ value ~ value ~ value }
+f_bltal  = { "bltal "  ~ value ~ value ~ value }
+f_bltz   = { "bltz "   ~ value ~ value }
+f_bltzal = { "bltzal " ~ value ~ value }
+f_bna    = { "bna "    ~ value ~ value ~ value ~ value }
+f_bnaal  = { "bnaal "  ~ value ~ value ~ value ~ value }
+f_bnaz   = { "bnaz "   ~ value ~ value ~ value }
+f_bnazal = { "bnazal " ~ value ~ value ~ value }
+f_bne    = { "bne "    ~ value ~ value ~ value }
+f_bneal  = { "bneal "  ~ value ~ value ~ value }
+f_bnez   = { "bnez "   ~ value ~ value }
+f_bnezal = { "bnezal " ~ value ~ value }
+f_brap   = { "brap "   ~ value ~ value ~ value ~ value }
+f_brapz  = { "brapz "  ~ value ~ value ~ value }
+f_breq   = { "breq "   ~ value ~ value ~ value }
+f_breqz  = { "breqz "  ~ value ~ value }
+f_brge   = { "brge "   ~ value ~ value ~ value }
+f_brgez  = { "brgez "  ~ value ~ value }
+f_brgt   = { "brgt "   ~ value ~ value ~ value }
+f_brgtz  = { "brgtz "  ~ value ~ value }
+f_brle   = { "brle "   ~ value ~ value ~ value }
+f_brlez  = { "brlez "  ~ value ~ value }
+f_brlt   = { "brlt "   ~ value ~ value   ~ value }
+f_brltz  = { "brltz "  ~ value ~ value }
+f_brna   = { "brna "   ~ value ~ value   ~ value   ~ value }
+f_brnaz  = { "brnaz "  ~ value ~ value   ~ value   ~ value }
+f_brne   = { "brne "   ~ value ~ value   ~ value }
+f_brnez  = { "brnez "  ~ value ~ value }
+f_j      = { "j "      ~ value }
+f_jal    = { "jal "    ~ value }
+f_jr     = { "jr "     ~ value }
 f_group_branch = _{
     f_bap  | f_bapal | f_bapz | f_bapzal |
     f_beq  | f_beqal | f_beqz | f_beqzal |
@@ -143,53 +140,53 @@ f_group_branch = _{
 }
 
 /* Variable Selection */
-f_sap    = { "sap"    ~ mem ~ value ~ value ~ value }
-f_sapz   = { "sapz"   ~ mem ~ value ~ value }
-f_sdns   = { "sdns"   ~ mem ~ dev }
-f_sdse   = { "sdse"   ~ mem ~ dev }
-f_select = { "select" ~ mem ~ value ~ value ~ value }
-f_seq    = { "seq"    ~ mem ~ value ~ value }
-f_seqz   = { "seqz"   ~ mem ~ value }
-f_sge    = { "sge"    ~ mem ~ value ~ value }
-f_sgez   = { "sgez"   ~ mem ~ value }
-f_sgt    = { "sgt"    ~ mem ~ value ~ value }
-f_sgtz   = { "sgtz"   ~ mem ~ value }
-f_sle    = { "sle"    ~ mem ~ value ~ value }
-f_slez   = { "slez"   ~ mem ~ value }
-f_slt    = { "slt"    ~ mem ~ value ~ value }
-f_sltz   = { "sltz"   ~ mem ~ value }
-f_sna    = { "sna"    ~ mem ~ value ~ value ~ value }
-f_snaz   = { "snaz"   ~ mem ~ value ~ value }
-f_sne    = { "sne"    ~ mem ~ value ~ value }
-f_snez   = { "snez"   ~ mem ~ value }
+f_sap    = { "sap "    ~ mem ~ value ~ value ~ value }
+f_sapz   = { "sapz "   ~ mem ~ value ~ value }
+f_sdns   = { "sdns "   ~ mem ~ dev }
+f_sdse   = { "sdse "   ~ mem ~ dev }
+f_select = { "select " ~ mem ~ value ~ value ~ value }
+f_seq    = { "seq "    ~ mem ~ value ~ value }
+f_seqz   = { "seqz "   ~ mem ~ value }
+f_sge    = { "sge "    ~ mem ~ value ~ value }
+f_sgez   = { "sgez "   ~ mem ~ value }
+f_sgt    = { "sgt "    ~ mem ~ value ~ value }
+f_sgtz   = { "sgtz "   ~ mem ~ value }
+f_sle    = { "sle "    ~ mem ~ value ~ value }
+f_slez   = { "slez "   ~ mem ~ value }
+f_slt    = { "slt "    ~ mem ~ value ~ value }
+f_sltz   = { "sltz "   ~ mem ~ value }
+f_sna    = { "sna "    ~ mem ~ value ~ value ~ value }
+f_snaz   = { "snaz "   ~ mem ~ value ~ value }
+f_sne    = { "sne "    ~ mem ~ value ~ value }
+f_snez   = { "snez "   ~ mem ~ value }
 f_group_select = _{
     f_sap  | f_sapz | f_sdns | f_sdse | f_select | f_seq | f_seqz | f_sge | f_sgez | f_sgt |
     f_sgtz | f_sle  | f_slez | f_slt  | f_sltz   | f_sna | f_snaz | f_sne | f_snez
 }
 
 /* Mathematical Operations */
-f_abs   = { "abs"   ~ mem ~ value }
-f_acos  = { "acos"  ~ mem ~ value }
-f_add   = { "add"   ~ mem ~ value ~ value }
-f_asin  = { "asin"  ~ mem ~ value }
-f_atan  = { "atan"  ~ mem ~ value }
-f_ceil  = { "ceil"  ~ mem ~ value }
-f_cos   = { "cos"   ~ mem ~ value }
-f_div   = { "div"   ~ mem ~ value ~ value }
-f_exp   = { "exp"   ~ mem ~ value } // TODO: in Myps implement pow
-f_floor = { "floor" ~ mem ~ value }
-f_log   = { "log"   ~ mem ~ value } // TODO: in Myps implement log base b
-f_max   = { "max"   ~ mem ~ value ~ value }
-f_min   = { "min"   ~ mem ~ value ~ value }
-f_mod   = { "mod"   ~ mem ~ value ~ value }
-f_mul   = { "mul"   ~ mem ~ value ~ value }
-f_rand  = { "rand"  ~ mem }
-f_round = { "round" ~ mem ~ value }
-f_sin   = { "sin"   ~ mem ~ value }
-f_sqrt  = { "sqrt"  ~ mem ~ value }
-f_sub   = { "sub"   ~ mem ~ value ~ value }
-f_tan   = { "tan"   ~ mem ~ value }
-f_trunc = { "trunc" ~ mem ~ value }
+f_abs   = { "abs "   ~ mem ~ value }
+f_acos  = { "acos "  ~ mem ~ value }
+f_add   = { "add "   ~ mem ~ value ~ value }
+f_asin  = { "asin "  ~ mem ~ value }
+f_atan  = { "atan "  ~ mem ~ value }
+f_ceil  = { "ceil "  ~ mem ~ value }
+f_cos   = { "cos "   ~ mem ~ value }
+f_div   = { "div "   ~ mem ~ value ~ value }
+f_exp   = { "exp "   ~ mem ~ value } // TODO: in Myps implement pow
+f_floor = { "floor " ~ mem ~ value }
+f_log   = { "log "   ~ mem ~ value } // TODO: in Myps implement log base b
+f_max   = { "max "   ~ mem ~ value ~ value }
+f_min   = { "min "   ~ mem ~ value ~ value }
+f_mod   = { "mod "   ~ mem ~ value ~ value }
+f_mul   = { "mul "   ~ mem ~ value ~ value }
+f_rand  = { "rand "  ~ mem }
+f_round = { "round " ~ mem ~ value }
+f_sin   = { "sin "   ~ mem ~ value }
+f_sqrt  = { "sqrt "  ~ mem ~ value }
+f_sub   = { "sub "   ~ mem ~ value ~ value }
+f_tan   = { "tan "   ~ mem ~ value }
+f_trunc = { "trunc " ~ mem ~ value }
 f_group_math = _{
     f_abs   | f_acos  | f_add  | f_asin | f_atan | f_ceil | f_cos | f_div  |
     f_exp   | f_floor | f_log  | f_max  | f_min  | f_mod  | f_mul | f_rand |
@@ -197,28 +194,28 @@ f_group_math = _{
 }
 
 /* Logic */
-f_and = { "and" ~ mem ~ value ~ value }
-f_nor = { "nor" ~ mem ~ value ~ value }
-f_or  = { "or"  ~ mem ~ value ~ value }
-f_xor = { "xor" ~ mem ~ value ~ value }
+f_and = { "and " ~ mem ~ value ~ value }
+f_nor = { "nor " ~ mem ~ value ~ value }
+f_or  = { "or "  ~ mem ~ value ~ value }
+f_xor = { "xor " ~ mem ~ value ~ value }
 f_group_logic = _{ f_and | f_nor | f_or | f_xor }
 
 /* Stack */
-f_peek = { "peek" ~ mem }
-f_pop  = { "pop"  ~ mem }
-f_push = { "push" ~ value }
+f_peek = { "peek " ~ mem }
+f_pop  = { "pop "  ~ mem }
+f_push = { "push " ~ value }
 f_group_stack = _{ f_peek | f_pop | f_push }
 
 /* Misc */
-f_alias  = { "alias" ~ token ~ reg }
-f_define = { "define" ~ token ~ num }
+f_alias  = { "alias " ~ token ~ reg }
+f_define = { "define " ~ token ~ num }
 f_hcf    = { "hcf" }
-f_move   = { "move" ~ mem ~ value }
-f_sleep  = { "sleep" ~ value }
+f_move   = { "move " ~ mem ~ value }
+f_sleep  = { "sleep " ~ value }
 f_yield  = { "yield" }
 f_group_misc = _{ f_alias | f_define | f_hcf | f_move | f_sleep | f_yield }
 
-fun = {
+fun = !{
     f_group_io |
     f_group_branch |
     f_group_select |
@@ -230,9 +227,14 @@ fun = {
 
 /* ============================================================================================== */
 
-blank = { NEWLINE }
-expr = _{ ((label | fun) ~ NEWLINE) | blank }
+blank = !{ NEWLINE }
+expr = { ((label | fun) ~ NEWLINE) | blank }
 
-program = { (expr | NEWLINE)* }
-file = _{ SOI ~ program ~ EOI }
+program = @{ SOI ~ expr* ~ EOI }
+/* program = { (expr | NEWLINE)* } */
+/* file = _{ SOI ~ program ~ EOI } */
 
+nl = _{ NEWLINE }
+COMMENT = _{ "#" ~ (!NEWLINE ~ ANY)* }
+WHITESPACE = _{ " " }
+ws = { " "+ }

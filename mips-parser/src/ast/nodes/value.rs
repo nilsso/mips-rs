@@ -1,3 +1,5 @@
+use std::{fmt, fmt::Display};
+
 use super::memory::Memory;
 
 use pest::iterators::Pair;
@@ -7,12 +9,12 @@ use crate::Rule;
 /// Value node.
 ///
 /// Values in MIPS expressions can be floating-point literals or those stored in state memory.
-/// The former is encapsulated in [`ValLit(f32)`](Value::ValLit),
+/// The former is encapsulated in [`ValLit(f64)`](Value::ValLit),
 /// while the later involves reducing a [`Memory`] node to a `StateIndex::Memory(i)`
 /// with which the ith value from state memory is obtained.
 #[derive(PartialEq, Debug)]
 pub enum Value {
-    ValLit(f32),
+    ValLit(f64),
     ValMem(Memory),
 }
 
@@ -35,3 +37,11 @@ impl Value {
     }
 }
 
+impl Display for Value {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Value::ValLit(x) => write!(fmt, "{}", x),
+            Value::ValMem(m) => write!(fmt, "{}", m),
+        }
+    }
+}
