@@ -1,16 +1,24 @@
 use mips_parser::prelude::*;
-use mips_state::*;
+use mips_simulator::prelude::*;
 
 macro_rules! run {
     ($s:literal, $state:ident) => {
-        let p = MipsParser::parse(Rule::expr, &$s).unwrap().inner();
+        let p = MipsParser::parse(Rule::expr, &$s).unwrap().first_inner();
+        if let Err(e) = &p {
+            println!("{:?}", e);
+        }
+        let p = p.unwrap();
         let a = Expr::from_pair(p);
+        if let Err(e) = &a {
+            println!("{:?}", e);
+        }
+        let a = a.unwrap();
         println!("{} -> {:?}", $s, $state.exec_expr(&a));
     }
 }
 
 fn main() {
-    let mut state = MipsState::default()
+    let mut state = ICState::default()
         // .with_mem(14, 15)
         // .with_mem(15, 16)
         // .with_alias("x", AliasKind::MemId(3))

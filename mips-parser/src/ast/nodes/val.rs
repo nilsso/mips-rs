@@ -4,6 +4,7 @@ use super::mem::Mem;
 
 use pest::iterators::Pair;
 
+use crate::ast::{pair_to_float, FirstInner, AstError, AstResult};
 use crate::Rule;
 
 /// Value node.
@@ -19,21 +20,14 @@ pub enum Val {
 }
 
 impl Val {
-    pub fn from_pair(pair: Pair<Rule>) -> Self {
-        match pair.as_rule() {
-            Rule::val => {
-                let inner = pair.into_inner().next().unwrap();
-                Val::from_pair(inner)
-            }
-            Rule::num => {
-                let x = pair.as_str().parse().unwrap();
-                Val::ValLit(x)
-            },
-            Rule::mem => {
-                Val::ValMem(Mem::from_pair(pair))
-            },
-            _ => unreachable!(),
-        }
+    pub fn from_pair(pair: Pair<Rule>) -> AstResult<Self> {
+        let val = match pair.as_rule() {
+            Rule::val => Val::from_pair(pair.first_inner()?)?,
+            Rule::num => Val::ValLit(pair_to_float(pair)?),
+            Rule::mem => Val::ValMem(Mem::from_pair(pair)?),
+            _ => return Err(AstError::Val(format!("{:?}", pair))),
+        };
+        Ok(val)
     }
 }
 

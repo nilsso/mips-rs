@@ -4,6 +4,7 @@ use itertools::join;
 use pest::iterators::Pair;
 
 use crate::Rule;
+use crate::ast::{AstError, AstResult};
 
 use super::Expr;
 
@@ -12,20 +13,20 @@ use super::Expr;
 pub struct Program(pub Vec<(usize, Expr)>);
 
 impl Program {
-    pub fn from_pair(pair: Pair<Rule>) -> Self {
-        match pair.as_rule() {
-            Rule::program => Self(
-                pair.into_inner()
+    pub fn from_pair(pair: Pair<Rule>) -> AstResult<Self> {
+        let program = match pair.as_rule() {
+            Rule::program => {
+                let expressions = pair
+                    .into_inner()
                     .enumerate()
-                    .filter(|(_, inner)| {
-                        let rule = inner.as_rule();
-                        rule != Rule::blank
-                    })
-                    .map(|(i, inner)| (i, Expr::from_pair(inner)))
-                    .collect(),
-            ),
-            _ => unreachable!(),
-        }
+                    .filter(|(_, expr_pair)| expr_pair.as_rule() != Rule::blank)
+                    .map(|(i, expr_pair)| Expr::from_pair(expr_pair).map(|expr| (i, expr)))
+                    .collect::<AstResult<Vec<(usize, Expr)>>>()?;
+                Self(expressions)
+            }
+            _ => return Err(AstError::Program),
+        };
+        Ok(program)
     }
 
     pub fn empty() -> Self {
@@ -45,6 +46,10 @@ impl Program {
 
 impl Display for Program {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(fmt, "{}", join(self.iter().map(|(_, expr)| expr.to_string()), "\n"))
+        writeln!(
+            fmt,
+            "{}",
+            join(self.iter().map(|(_, expr)| expr).map(Expr::to_string), "\n")
+        )
     }
 }

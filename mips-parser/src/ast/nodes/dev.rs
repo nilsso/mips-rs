@@ -2,8 +2,8 @@ use std::{fmt, fmt::Display};
 
 use pest::iterators::Pair;
 
+use crate::ast::{pair_to_int, AstError, AstResult, FirstInner};
 use crate::Rule;
-use crate::InnerUnchecked;
 
 /// Device register node.
 #[derive(Clone, PartialEq, Debug)]
@@ -17,19 +17,19 @@ impl Dev {
     ///
     /// Should be called on outer most `Rule::dev` pair,
     /// so that all scenarios (base, alias, indirect) are handled.
-    pub fn from_pair(pair: Pair<Rule>) -> Self {
-        match pair.as_rule() {
-            Rule::reg | Rule::dev => Dev::from_pair(pair.inner()),
+    pub fn from_pair(pair: Pair<Rule>) -> AstResult<Self> {
+        let mem = match pair.as_rule() {
+            Rule::reg | Rule::dev => Dev::from_pair(pair.first_inner()?)?,
             Rule::dev_lit => {
                 let s = pair.as_str();
                 let indirections = s.bytes().filter(|b| *b == b'r').count() as usize;
-                let inner = pair.inner();
-                let base_index = inner.as_str().parse().unwrap();
+                let base_index = pair_to_int(pair.first_inner()?)?;
                 Dev::DevLit(base_index, indirections)
-            },
+            }
             Rule::alias => Dev::DevAlias(pair.as_str().into()),
-            _ => unreachable!(),
-        }
+            _ => return Err(AstError::Dev),
+        };
+        Ok(mem)
     }
 }
 
@@ -42,7 +42,7 @@ impl Display for Dev {
                     write!(fmt, "r")?;
                 }
                 write!(fmt, "{}", i)
-            },
+            }
             Dev::DevAlias(a) => write!(fmt, "{}", a),
         }
     }

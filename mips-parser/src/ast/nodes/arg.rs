@@ -5,7 +5,7 @@ use pest::iterators::Pair;
 use util::impl_is_as_inner;
 
 use crate::Rule;
-use crate::InnerUnchecked;
+use crate::ast::{pair_to_float, FirstInner, AstError, AstResult};
 
 use super::{Mem, Dev, Val};
 
@@ -14,22 +14,25 @@ use super::{Mem, Dev, Val};
 pub enum Arg {
     ArgMem(Mem),
     ArgDev(Dev),
+    ArgAlias(String),
     ArgVal(Val),
     ArgToken(String),
 }
 
 impl Arg {
-    pub fn from_pair(pair: Pair<Rule>) -> Self {
+    pub fn from_pair(pair: Pair<Rule>) -> AstResult<Self> {
         let rule = pair.as_rule();
-        match rule {
-            Rule::reg => Arg::from_pair(pair.inner()),
-            Rule::mem | Rule::mem_lit => Arg::ArgMem(Mem::from_pair(pair)),
-            Rule::dev | Rule::dev_lit => Arg::ArgDev(Dev::from_pair(pair)),
-            Rule::val => Arg::ArgVal(Val::from_pair(pair)),
+        let arg = match rule {
+            Rule::reg => Arg::from_pair(pair.first_inner()?)?,
+            Rule::mem | Rule::mem_lit => Arg::ArgMem(Mem::from_pair(pair)?),
+            Rule::dev | Rule::dev_lit => Arg::ArgDev(Dev::from_pair(pair)?),
+            Rule::alias => Arg::ArgAlias(pair.as_str().into()),
+            Rule::val => Arg::ArgVal(Val::from_pair(pair)?),
             Rule::tkn => Arg::ArgToken(pair.as_str().into()),
-            Rule::num => Arg::ArgVal(Val::ValLit(pair.as_str().parse().unwrap())),
-            _ => unreachable!(),
-        }
+            Rule::num => Arg::ArgVal(Val::ValLit(pair_to_float(pair)?)),
+            _ => return Err(AstError::Arg(format!("{:?}", pair))),
+        };
+        Ok(arg)
     }
 
     pub fn as_string(&self) -> &String {
@@ -50,6 +53,7 @@ impl Display for Arg {
         match self {
             Arg::ArgMem(m) => write!(fmt, "{}", m),
             Arg::ArgDev(d) => write!(fmt, "{}", d),
+            Arg::ArgAlias(a) => write!(fmt, "{}", a),
             Arg::ArgVal(v) => write!(fmt, "{}", v),
             Arg::ArgToken(t) => write!(fmt, "{}", t),
         }

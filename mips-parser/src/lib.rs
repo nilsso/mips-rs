@@ -14,7 +14,7 @@
 
 use std::path::PathBuf;
 
-use pest::iterators::{Pair, Pairs};
+// use pest::iterators::{Pair, Pairs};
 use pest_derive::Parser;
 
 /// Stationeers MIPS language parser.
@@ -29,14 +29,16 @@ pub mod ast;
 pub enum MipsParserError {
     IOError(std::io::Error),
     ParserError(pest::error::Error<Rule>),
+    AstError(ast::AstError),
 }
 
-/// Everything in one use statement.
+/// All-in-one module.
 pub mod prelude {
+    pub use crate::ast::{FirstInner, AstError};
     pub use crate::ast::nodes::{Arg, Dev, Expr, Mem, Program, Val, Func};
     pub use crate::{build_ast_from_path, build_ast_from_str};
-    pub use crate::{InnerUnchecked, MipsParser, MipsParserError, Rule};
-    pub use pest::Parser;
+    pub use crate::{MipsParser, MipsParserError, Rule};
+    pub use pest::{Parser, iterators::Pair};
 }
 
 use ast::nodes::Program;
@@ -44,9 +46,9 @@ pub use pest::Parser;
 
 pub fn build_ast_from_str(source: &str) -> Result<Program, MipsParserError> {
     let mut pairs =
-        MipsParser::parse(Rule::program, &source).map_err(|e| MipsParserError::ParserError(e))?;
+        MipsParser::parse(Rule::program, &source).map_err(MipsParserError::ParserError)?;
     let program_pair = pairs.next().unwrap();
-    let program = Program::from_pair(program_pair);
+    let program = Program::from_pair(program_pair).map_err(MipsParserError::AstError)?;
     Ok(program)
 }
 
@@ -57,24 +59,3 @@ pub fn build_ast_from_path<P: Into<PathBuf>>(path: P) -> Result<Program, MipsPar
     build_ast_from_str(&source)
 }
 
-pub trait InnerUnchecked {
-    type Output;
-
-    fn inner(self) -> Self::Output;
-}
-
-impl<'i> InnerUnchecked for Pair<'i, Rule> {
-    type Output = Self;
-
-    fn inner(self) -> Self {
-        self.into_inner().next().unwrap()
-    }
-}
-
-impl<'i> InnerUnchecked for Pairs<'i, Rule> {
-    type Output = Pair<'i, Rule>;
-
-    fn inner(mut self) -> Pair<'i, Rule> {
-        self.next().unwrap()
-    }
-}

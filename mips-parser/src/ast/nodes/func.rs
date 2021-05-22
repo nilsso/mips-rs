@@ -1,6 +1,7 @@
 use std::{fmt, fmt::Display};
 
 use crate::Rule;
+use crate::ast::{AstError, AstResult};
 
 macro_rules! functions {
     {$(($enum_variant:ident, $rule:ident)),*$(,)*} => {
@@ -13,11 +14,12 @@ macro_rules! functions {
         }
 
         impl Func {
-            pub fn from_rule(rule: Rule) -> Self {
-                match rule {
+            pub fn from_rule(rule: Rule) -> AstResult<Self> {
+                let func = match rule {
                     $( Rule::$rule => Func::$enum_variant, )*
-                    _ => unreachable!(),
-                }
+                    _ => return Err(AstError::Func),
+                };
+                Ok(func)
             }
         }
     };

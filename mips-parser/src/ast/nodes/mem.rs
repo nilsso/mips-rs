@@ -3,7 +3,7 @@ use std::{fmt, fmt::Display};
 use pest::iterators::Pair;
 
 use crate::Rule;
-use crate::InnerUnchecked;
+use crate::ast::{pair_to_int, FirstInner, AstError, AstResult};
 
 /// Memory register node.
 #[derive(Clone, PartialEq, Debug)]
@@ -17,19 +17,19 @@ impl Mem {
     ///
     /// Should be called on outer most `Rule::mem` pair,
     /// so that all scenarios (base, alias, indirect) are handled.
-    pub fn from_pair(pair: Pair<Rule>) -> Self {
-        match pair.as_rule() {
-            Rule::reg | Rule::mem => Mem::from_pair(pair.inner()),
+    pub fn from_pair(pair: Pair<Rule>) -> AstResult<Self> {
+        let mem = match pair.as_rule() {
+            Rule::reg | Rule::mem => Mem::from_pair(pair.first_inner()?)?,
             Rule::mem_lit => {
                 let s = pair.as_str();
                 let indirections = s.bytes().filter(|b| *b == b'r').count() as usize - 1;
-                let inner = pair.inner();
-                let base_index = inner.as_str().parse().unwrap();
+                let base_index = pair_to_int(pair.first_inner()?)?;
                 Mem::MemLit(base_index, indirections)
             },
             Rule::alias => Mem::MemAlias(pair.as_str().into()),
-            _ => unreachable!(),
-        }
+            _ => return Err(AstError::Mem),
+        };
+        Ok(mem)
     }
 }
 

@@ -1,0 +1,21 @@
+name: mips-parser-cli
+author: nilsso <nilso@enosis.net>
+settings:
+  - ArgRequiredElseHelp
+args:
+  - output:
+      help: Output type
+      possible_values: [ peg, ast, mips ]
+      required: true
+  - file:
+      help: Parse file instead of from stdin
+      short: f
+      long: file
+      required: false
+      takes_value: true
+  - pretty:
+      short: p
+      long: pretty
+      help: Pretty print
+      required: false
+

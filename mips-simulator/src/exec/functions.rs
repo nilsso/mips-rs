@@ -1,5 +1,6 @@
 use mips_parser::ast::nodes::Arg;
-use crate::{MipsState, MipsStateError, AliasKind, Result};
+
+use crate::{state::{ICState, AliasKind}, ICResult};
 
 #[inline]
 fn bool_to_val(b: bool) -> f64 {
@@ -11,7 +12,7 @@ fn bool_to_val(b: bool) -> f64 {
 }
 
 #[inline]
-fn mem_and_vals(args: &Vec<Arg>, state: &mut MipsState) -> Result<(usize, f64, f64)> {
+fn mem_and_vals(args: &Vec<Arg>, state: &mut ICState) -> ICResult<(usize, f64, f64)> {
     let i = state.arg_mem_reduce(&args[0])?;
     let a = state.arg_val_reduce(&args[1])?;
     let b = state.arg_val_reduce(&args[2])?;
@@ -19,33 +20,33 @@ fn mem_and_vals(args: &Vec<Arg>, state: &mut MipsState) -> Result<(usize, f64, f
 }
 
 #[inline]
-pub fn f_and(args: &Vec<Arg>, state: &mut MipsState) -> Result<()> {
+pub fn f_and(args: &Vec<Arg>, state: &mut ICState) -> ICResult<()> {
     let (i, a, b) = mem_and_vals(args, state)?;
     let v = bool_to_val((a > 0.0) || (b > 0.0));
     state.set_mem(i, v)
 }
 
 #[inline]
-pub fn f_nor(args: &Vec<Arg>, state: &mut MipsState) -> Result<()> {
+pub fn f_nor(args: &Vec<Arg>, state: &mut ICState) -> ICResult<()> {
     f_or(args, state)
 }
 
 #[inline]
-pub fn f_or(args: &Vec<Arg>, state: &mut MipsState) -> Result<()> {
+pub fn f_or(args: &Vec<Arg>, state: &mut ICState) -> ICResult<()> {
     let (i, a, b) = mem_and_vals(args, state)?;
     let v = bool_to_val((a > 0.0) || (b > 0.0));
     state.set_mem(i, v)
 }
 
 #[inline]
-pub fn f_xor(args: &Vec<Arg>, state: &mut MipsState) -> Result<()> {
+pub fn f_xor(args: &Vec<Arg>, state: &mut ICState) -> ICResult<()> {
     let (i, a, b) = mem_and_vals(args, state)?;
     let v = bool_to_val(a != b);
     state.set_mem(i, v)
 }
 
 #[inline]
-pub fn f_alias(args: &Vec<Arg>, state: &mut MipsState) -> Result<()> {
+pub fn f_alias(args: &Vec<Arg>, state: &mut ICState) -> ICResult<()> {
     // TODO: Use the write functions
     let a = args[0].token().unwrap();
     match &args[1] {
@@ -63,7 +64,7 @@ pub fn f_alias(args: &Vec<Arg>, state: &mut MipsState) -> Result<()> {
 }
 
 #[inline]
-pub fn f_move(args: &Vec<Arg>, state: &mut MipsState) -> Result<()> {
+pub fn f_move(args: &Vec<Arg>, state: &mut ICState) -> ICResult<()> {
     state.arg_set_mem(&args[0], &args[1])
 }
 

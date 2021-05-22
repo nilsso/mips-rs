@@ -20,12 +20,12 @@ tkn = @{ ASCII_ALPHANUMERIC+ }
 
 alias = @{ tkn }
 
-mem_lit = ${ !"d" ~ "r"* ~ int }
+mem_lit = ${ !"d" ~ "r"+ ~ int }
 dev_lit = ${  "d" ~ "r"* ~ int }
 
 mem = { mem_lit | alias }
 dev = { dev_lit | alias }
-reg = { mem_lit | dev_lit | alias }
+reg = _{ mem_lit | dev_lit | alias }
 
 /* ============================================================================================== */
 /* Values: literal or from a memory register */
@@ -38,76 +38,76 @@ val = { num | mem }
 /* ============================================================================================== */
 
 /* Device IO */
-f_bdns   = { "bdns "   ~ dev   ~ val }
-f_bdnsal = { "bdnsal " ~ dev   ~ val }
-f_bdse   = { "bdse "   ~ dev   ~ val }
-f_bdseal = { "bdseal " ~ dev   ~ val }
-f_brdns  = { "brdns "  ~ dev   ~ val }
-f_brdse  = { "brdse "  ~ dev   ~ val }
+f_bdns   = !{ "bdns "   ~ dev   ~ val }
+f_bdnsal = !{ "bdnsal " ~ dev   ~ val }
+f_bdse   = !{ "bdse "   ~ dev   ~ val }
+f_bdseal = !{ "bdseal " ~ dev   ~ val }
+f_brdns  = !{ "brdns "  ~ dev   ~ val }
+f_brdse  = !{ "brdse "  ~ dev   ~ val }
 /* TODO: Not too sure if some of these arguments types are strictly tokens */
-f_l      = { "l "      ~ mem   ~ dev   ~ tkn }
-f_lb     = { "lb "     ~ mem   ~ val ~ tkn ~ val }
-f_lr     = { "lr "     ~ mem   ~ dev   ~ val ~ val }
-f_ls     = { "ls "     ~ mem   ~ dev   ~ val ~ tkn }
-f_s      = { "s "      ~ dev   ~ tkn ~ val }
-f_sb     = { "sb "     ~ val ~ tkn ~ val }
+f_l      = !{ "l "      ~ mem   ~ dev   ~ tkn }
+f_lb     = !{ "lb "     ~ mem   ~ val ~ tkn ~ val }
+f_lr     = !{ "lr "     ~ mem   ~ dev   ~ val ~ val }
+f_ls     = !{ "ls "     ~ mem   ~ dev   ~ val ~ tkn }
+f_s      = !{ "s "      ~ dev   ~ tkn ~ val }
+f_sb     = !{ "sb "     ~ val ~ tkn ~ val }
 f_group_io = _{
     f_bdns | f_bdnsal | f_bdse | f_bdseal | f_brdns | f_brdse |
     f_l    | f_lb     | f_lr   | f_ls     | f_s     | f_sb
 }
 
 /* Flow Control, Branches and Jumps */
-f_bap    = { "bap "    ~ val ~ val ~ val ~ val }
-f_bapal  = { "bapal "  ~ val ~ val ~ val ~ val }
-f_bapz   = { "bapz "   ~ val ~ val ~ val }
-f_bapzal = { "bapzal " ~ val ~ val ~ val }
-f_beq    = { "beq "    ~ val ~ val ~ val }
-f_beqal  = { "beqal "  ~ val ~ val ~ val }
-f_beqz   = { "beqz "   ~ val ~ val }
-f_beqzal = { "beqzal " ~ val ~ val }
-f_bge    = { "bge "    ~ val ~ val ~ val }
-f_bgeal  = { "bgeal "  ~ val ~ val ~ val }
-f_bgez   = { "bgez "   ~ val ~ val }
-f_bgezal = { "bgezal " ~ val ~ val }
-f_bgt    = { "bgt "    ~ val ~ val ~ val }
-f_bgtal  = { "bgtal "  ~ val ~ val ~ val }
-f_bgtz   = { "bgtz "   ~ val ~ val }
-f_bgtzal = { "bgtzal " ~ val ~ val }
-f_ble    = { "ble "    ~ val ~ val ~ val }
-f_bleal  = { "bleal "  ~ val ~ val ~ val }
-f_blez   = { "blez "   ~ val ~ val }
-f_blezal = { "blezal " ~ val ~ val }
-f_blt    = { "blt "    ~ val ~ val ~ val }
-f_bltal  = { "bltal "  ~ val ~ val ~ val }
-f_bltz   = { "bltz "   ~ val ~ val }
-f_bltzal = { "bltzal " ~ val ~ val }
-f_bna    = { "bna "    ~ val ~ val ~ val ~ val }
-f_bnaal  = { "bnaal "  ~ val ~ val ~ val ~ val }
-f_bnaz   = { "bnaz "   ~ val ~ val ~ val }
-f_bnazal = { "bnazal " ~ val ~ val ~ val }
-f_bne    = { "bne "    ~ val ~ val ~ val }
-f_bneal  = { "bneal "  ~ val ~ val ~ val }
-f_bnez   = { "bnez "   ~ val ~ val }
-f_bnezal = { "bnezal " ~ val ~ val }
-f_brap   = { "brap "   ~ val ~ val ~ val ~ val }
-f_brapz  = { "brapz "  ~ val ~ val ~ val }
-f_breq   = { "breq "   ~ val ~ val ~ val }
-f_breqz  = { "breqz "  ~ val ~ val }
-f_brge   = { "brge "   ~ val ~ val ~ val }
-f_brgez  = { "brgez "  ~ val ~ val }
-f_brgt   = { "brgt "   ~ val ~ val ~ val }
-f_brgtz  = { "brgtz "  ~ val ~ val }
-f_brle   = { "brle "   ~ val ~ val ~ val }
-f_brlez  = { "brlez "  ~ val ~ val }
-f_brlt   = { "brlt "   ~ val ~ val   ~ val }
-f_brltz  = { "brltz "  ~ val ~ val }
-f_brna   = { "brna "   ~ val ~ val   ~ val   ~ val }
-f_brnaz  = { "brnaz "  ~ val ~ val   ~ val   ~ val }
-f_brne   = { "brne "   ~ val ~ val   ~ val }
-f_brnez  = { "brnez "  ~ val ~ val }
-f_j      = { "j "      ~ val }
-f_jal    = { "jal "    ~ val }
-f_jr     = { "jr "     ~ val }
+f_bap    = !{ "bap "    ~ val ~ val ~ val ~ val }
+f_bapal  = !{ "bapal "  ~ val ~ val ~ val ~ val }
+f_bapz   = !{ "bapz "   ~ val ~ val ~ val }
+f_bapzal = !{ "bapzal " ~ val ~ val ~ val }
+f_beq    = !{ "beq "    ~ val ~ val ~ val }
+f_beqal  = !{ "beqal "  ~ val ~ val ~ val }
+f_beqz   = !{ "beqz "   ~ val ~ val }
+f_beqzal = !{ "beqzal " ~ val ~ val }
+f_bge    = !{ "bge "    ~ val ~ val ~ val }
+f_bgeal  = !{ "bgeal "  ~ val ~ val ~ val }
+f_bgez   = !{ "bgez "   ~ val ~ val }
+f_bgezal = !{ "bgezal " ~ val ~ val }
+f_bgt    = !{ "bgt "    ~ val ~ val ~ val }
+f_bgtal  = !{ "bgtal "  ~ val ~ val ~ val }
+f_bgtz   = !{ "bgtz "   ~ val ~ val }
+f_bgtzal = !{ "bgtzal " ~ val ~ val }
+f_ble    = !{ "ble "    ~ val ~ val ~ val }
+f_bleal  = !{ "bleal "  ~ val ~ val ~ val }
+f_blez   = !{ "blez "   ~ val ~ val }
+f_blezal = !{ "blezal " ~ val ~ val }
+f_blt    = !{ "blt "    ~ val ~ val ~ val }
+f_bltal  = !{ "bltal "  ~ val ~ val ~ val }
+f_bltz   = !{ "bltz "   ~ val ~ val }
+f_bltzal = !{ "bltzal " ~ val ~ val }
+f_bna    = !{ "bna "    ~ val ~ val ~ val ~ val }
+f_bnaal  = !{ "bnaal "  ~ val ~ val ~ val ~ val }
+f_bnaz   = !{ "bnaz "   ~ val ~ val ~ val }
+f_bnazal = !{ "bnazal " ~ val ~ val ~ val }
+f_bne    = !{ "bne "    ~ val ~ val ~ val }
+f_bneal  = !{ "bneal "  ~ val ~ val ~ val }
+f_bnez   = !{ "bnez "   ~ val ~ val }
+f_bnezal = !{ "bnezal " ~ val ~ val }
+f_brap   = !{ "brap "   ~ val ~ val ~ val ~ val }
+f_brapz  = !{ "brapz "  ~ val ~ val ~ val }
+f_breq   = !{ "breq "   ~ val ~ val ~ val }
+f_breqz  = !{ "breqz "  ~ val ~ val }
+f_brge   = !{ "brge "   ~ val ~ val ~ val }
+f_brgez  = !{ "brgez "  ~ val ~ val }
+f_brgt   = !{ "brgt "   ~ val ~ val ~ val }
+f_brgtz  = !{ "brgtz "  ~ val ~ val }
+f_brle   = !{ "brle "   ~ val ~ val ~ val }
+f_brlez  = !{ "brlez "  ~ val ~ val }
+f_brlt   = !{ "brlt "   ~ val ~ val   ~ val }
+f_brltz  = !{ "brltz "  ~ val ~ val }
+f_brna   = !{ "brna "   ~ val ~ val   ~ val   ~ val }
+f_brnaz  = !{ "brnaz "  ~ val ~ val   ~ val   ~ val }
+f_brne   = !{ "brne "   ~ val ~ val   ~ val }
+f_brnez  = !{ "brnez "  ~ val ~ val }
+f_j      = !{ "j "      ~ val }
+f_jal    = !{ "jal "    ~ val }
+f_jr     = !{ "jr "     ~ val }
 f_group_branch = _{
     f_bap  | f_bapal | f_bapz | f_bapzal |
     f_beq  | f_beqal | f_beqz | f_beqzal |
@@ -120,53 +120,53 @@ f_group_branch = _{
 }
 
 /* Variable Selection */
-f_sap    = { "sap "    ~ mem ~ val ~ val ~ val }
-f_sapz   = { "sapz "   ~ mem ~ val ~ val }
-f_sdns   = { "sdns "   ~ mem ~ dev }
-f_sdse   = { "sdse "   ~ mem ~ dev }
-f_select = { "select " ~ mem ~ val ~ val ~ val }
-f_seq    = { "seq "    ~ mem ~ val ~ val }
-f_seqz   = { "seqz "   ~ mem ~ val }
-f_sge    = { "sge "    ~ mem ~ val ~ val }
-f_sgez   = { "sgez "   ~ mem ~ val }
-f_sgt    = { "sgt "    ~ mem ~ val ~ val }
-f_sgtz   = { "sgtz "   ~ mem ~ val }
-f_sle    = { "sle "    ~ mem ~ val ~ val }
-f_slez   = { "slez "   ~ mem ~ val }
-f_slt    = { "slt "    ~ mem ~ val ~ val }
-f_sltz   = { "sltz "   ~ mem ~ val }
-f_sna    = { "sna "    ~ mem ~ val ~ val ~ val }
-f_snaz   = { "snaz "   ~ mem ~ val ~ val }
-f_sne    = { "sne "    ~ mem ~ val ~ val }
-f_snez   = { "snez "   ~ mem ~ val }
+f_sap    = !{ "sap "    ~ mem ~ val ~ val ~ val }
+f_sapz   = !{ "sapz "   ~ mem ~ val ~ val }
+f_sdns   = !{ "sdns "   ~ mem ~ dev }
+f_sdse   = !{ "sdse "   ~ mem ~ dev }
+f_select = !{ "select " ~ mem ~ val ~ val ~ val }
+f_seq    = !{ "seq "    ~ mem ~ val ~ val }
+f_seqz   = !{ "seqz "   ~ mem ~ val }
+f_sge    = !{ "sge "    ~ mem ~ val ~ val }
+f_sgez   = !{ "sgez "   ~ mem ~ val }
+f_sgt    = !{ "sgt "    ~ mem ~ val ~ val }
+f_sgtz   = !{ "sgtz "   ~ mem ~ val }
+f_sle    = !{ "sle "    ~ mem ~ val ~ val }
+f_slez   = !{ "slez "   ~ mem ~ val }
+f_slt    = !{ "slt "    ~ mem ~ val ~ val }
+f_sltz   = !{ "sltz "   ~ mem ~ val }
+f_sna    = !{ "sna "    ~ mem ~ val ~ val ~ val }
+f_snaz   = !{ "snaz "   ~ mem ~ val ~ val }
+f_sne    = !{ "sne "    ~ mem ~ val ~ val }
+f_snez   = !{ "snez "   ~ mem ~ val }
 f_group_select = _{
     f_sap  | f_sapz | f_sdns | f_sdse | f_select | f_seq | f_seqz | f_sge | f_sgez | f_sgt |
     f_sgtz | f_sle  | f_slez | f_slt  | f_sltz   | f_sna | f_snaz | f_sne | f_snez
 }
 
 /* Mathematical Operations */
-f_abs   = { "abs "   ~ mem ~ val }
-f_acos  = { "acos "  ~ mem ~ val }
-f_add   = { "add "   ~ mem ~ val ~ val }
-f_asin  = { "asin "  ~ mem ~ val }
-f_atan  = { "atan "  ~ mem ~ val }
-f_ceil  = { "ceil "  ~ mem ~ val }
-f_cos   = { "cos "   ~ mem ~ val }
-f_div   = { "div "   ~ mem ~ val ~ val }
-f_exp   = { "exp "   ~ mem ~ val } // TODO: in Myps implement pow
-f_floor = { "floor " ~ mem ~ val }
-f_log   = { "log "   ~ mem ~ val } // TODO: in Myps implement log base b
-f_max   = { "max "   ~ mem ~ val ~ val }
-f_min   = { "min "   ~ mem ~ val ~ val }
-f_mod   = { "mod "   ~ mem ~ val ~ val }
-f_mul   = { "mul "   ~ mem ~ val ~ val }
-f_rand  = { "rand "  ~ mem }
-f_round = { "round " ~ mem ~ val }
-f_sin   = { "sin "   ~ mem ~ val }
-f_sqrt  = { "sqrt "  ~ mem ~ val }
-f_sub   = { "sub "   ~ mem ~ val ~ val }
-f_tan   = { "tan "   ~ mem ~ val }
-f_trunc = { "trunc " ~ mem ~ val }
+f_abs   = !{ "abs "   ~ mem ~ val }
+f_acos  = !{ "acos "  ~ mem ~ val }
+f_add   = !{ "add "   ~ mem ~ val ~ val }
+f_asin  = !{ "asin "  ~ mem ~ val }
+f_atan  = !{ "atan "  ~ mem ~ val }
+f_ceil  = !{ "ceil "  ~ mem ~ val }
+f_cos   = !{ "cos "   ~ mem ~ val }
+f_div   = !{ "div "   ~ mem ~ val ~ val }
+f_exp   = !{ "exp "   ~ mem ~ val } // TODO: in Myps implement pow
+f_floor = !{ "floor " ~ mem ~ val }
+f_log   = !{ "log "   ~ mem ~ val } // TODO: in Myps implement log base b
+f_max   = !{ "max "   ~ mem ~ val ~ val }
+f_min   = !{ "min "   ~ mem ~ val ~ val }
+f_mod   = !{ "mod "   ~ mem ~ val ~ val }
+f_mul   = !{ "mul "   ~ mem ~ val ~ val }
+f_rand  = !{ "rand "  ~ mem }
+f_round = !{ "round " ~ mem ~ val }
+f_sin   = !{ "sin "   ~ mem ~ val }
+f_sqrt  = !{ "sqrt "  ~ mem ~ val }
+f_sub   = !{ "sub "   ~ mem ~ val ~ val }
+f_tan   = !{ "tan "   ~ mem ~ val }
+f_trunc = !{ "trunc " ~ mem ~ val }
 f_group_math = _{
     f_abs   | f_acos  | f_add  | f_asin | f_atan | f_ceil | f_cos | f_div  |
     f_exp   | f_floor | f_log  | f_max  | f_min  | f_mod  | f_mul | f_rand |
@@ -174,46 +174,42 @@ f_group_math = _{
 }
 
 /* Logic */
-f_and = { "and " ~ mem ~ val ~ val }
-f_nor = { "nor " ~ mem ~ val ~ val }
-f_or  = { "or "  ~ mem ~ val ~ val }
-f_xor = { "xor " ~ mem ~ val ~ val }
+f_and = !{ "and " ~ mem ~ val ~ val }
+f_nor = !{ "nor " ~ mem ~ val ~ val }
+f_or  = !{ "or "  ~ mem ~ val ~ val }
+f_xor = !{ "xor " ~ mem ~ val ~ val }
 f_group_logic = _{ f_and | f_nor | f_or | f_xor }
 
 /* Stack */
-f_peek = { "peek " ~ mem }
-f_pop  = { "pop "  ~ mem }
-f_push = { "push " ~ val }
+f_peek = !{ "peek " ~ mem }
+f_pop  = !{ "pop "  ~ mem }
+f_push = !{ "push " ~ val }
 f_group_stack = _{ f_peek | f_pop | f_push }
 
 /* Misc */
-f_alias  = { "alias " ~ tkn ~ reg }
-f_define = { "define " ~ tkn ~ num }
-f_hcf    = { "hcf" }
-f_move   = { "move " ~ mem ~ val }
-f_sleep  = { "sleep " ~ val }
-f_yield  = { "yield" }
+f_alias  = !{ "alias " ~ tkn ~ reg }
+f_define = !{ "define " ~ tkn ~ num }
+f_hcf    = !{ "hcf" }
+f_move   = !{ "move " ~ mem ~ val }
+f_sleep  = !{ "sleep " ~ val }
+f_yield  = !{ "yield" }
 f_group_misc = _{ f_alias | f_define | f_hcf | f_move | f_sleep | f_yield }
 
 /* Label */
-f_label  = ${ tkn ~ ":" }
+f_label  = !{ tkn ~ ":" }
 
-expr = !{
-    f_group_io |
-    f_group_branch |
-    f_group_select |
-    f_group_math |
-    f_group_logic |
-    f_group_stack |
-    f_group_misc |
-    f_label
+function = _{
+    f_group_io    | f_group_branch | f_group_select | f_group_math |
+    f_group_logic | f_group_stack  | f_group_misc   | f_label
 }
 
 /* ============================================================================================== */
 
 blank = { NEWLINE }
-line = _{ (expr ~ NEWLINE) | blank }
-program = @{ SOI ~ line* ~ EOI }
+expr = ${ function ~ WHITESPACE* ~ COMMENT* ~ (NEWLINE | EOI) }
+
+line = _{ expr | blank }
+program = @{ SOI ~ line* }
 
 COMMENT = _{ "#" ~ (!NEWLINE ~ ANY)* }
 WHITESPACE = _{ " " }

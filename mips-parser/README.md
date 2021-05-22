@@ -3,6 +3,14 @@ mips-parser 🚀
 
 The MIPS language parser component of `mips-rs`.
 
+## Todo and notes
+
+- [ ] Change all nodes errors to have strings
+
+On stationeering:
+- labels and aliases of same name do not play well together
+- later labels and aliases seem to nullify even prior definitions
+
 ## Abstract syntax tree
 
 From [Wikipedia][wiki-ast]:
@@ -168,10 +176,4 @@ a [`Value`] node represents one of these.
 [`Value`]: nodes::Value
 [`Value::ValLit`]: nodes::Value::ValLit
 [`Value::ValMem`]: nodes::Value::ValMem
-
-## Development notes:
-
-On stationeering:
-- labels and aliases of same name do not play well together
-- later labels and aliases seem to nullify even prior definitions
 
