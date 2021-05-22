@@ -2,3 +2,138 @@ mips-state 🚀
 =============
 
 The simulator component of `mips-rs`.
+
+### TODO
+* implement `DeviceKind` and `Device` structs, along with RON parsing to populate
+    stock Stationeers device kinds.
+* figure out how to include `MipsState` private fields without including
+    the `function` module (as `cargo doc --document-private-items` includes it).
+
+* Implement all the functions:
+
+- [ ] Device IO
+    - [ ] `Bdns`
+    - [ ] `Bdnsal`
+    - [ ] `Bdse`
+    - [ ] `Bdseal`
+    - [ ] `Brdns`
+    - [ ] `Brdse`
+    - [ ] `L`
+    - [ ] `Lb`
+    - [ ] `Lr`
+    - [ ] `Ls`
+    - [ ] `S`
+    - [ ] `Sb`
+- [ ] Flow Control, Branches and Jumps
+    - [ ] `Bap`
+    - [ ] `Bapal`
+    - [ ] `Bapz`
+    - [ ] `Bapzal`
+    - [ ] `Beq`
+    - [ ] `Beqal`
+    - [ ] `Beqz`
+    - [ ] `Beqzal`
+    - [ ] `Bge`
+    - [ ] `Bgeal`
+    - [ ] `Bgez`
+    - [ ] `Bgezal`
+    - [ ] `Bgt`
+    - [ ] `Bgtal`
+    - [ ] `Bgtz`
+    - [ ] `Bgtzal`
+    - [ ] `Ble`
+    - [ ] `Bleal`
+    - [ ] `Blez`
+    - [ ] `Blezal`
+    - [ ] `Blt`
+    - [ ] `Bltal`
+    - [ ] `Bltz`
+    - [ ] `Bltzal`
+    - [ ] `Bna`
+    - [ ] `Bnaal`
+    - [ ] `Bnaz`
+    - [ ] `Bnazal`
+    - [ ] `Bne`
+    - [ ] `Bneal`
+    - [ ] `Bnez`
+    - [ ] `Bnezal`
+    - [ ] `Brap`
+    - [ ] `Brapz`
+    - [ ] `Breq`
+    - [ ] `Breqz`
+    - [ ] `Brge`
+    - [ ] `Brgez`
+    - [ ] `Brgt`
+    - [ ] `Brgtz`
+    - [ ] `Brle`
+    - [ ] `Brlez`
+    - [ ] `Brlt`
+    - [ ] `Brltz`
+    - [ ] `Brna`
+    - [ ] `Brnaz`
+    - [ ] `Brne`
+    - [ ] `Brnez`
+    - [ ] `J`
+    - [ ] `Jal`
+    - [ ] `Jr`
+- [ ] Variable selection
+    - [ ] `Sap`
+    - [ ] `Sapz`
+    - [ ] `Sdns`
+    - [ ] `Sdse`
+    - [ ] `Select`
+    - [ ] `Seq`
+    - [ ] `Seqz`
+    - [ ] `Sge`
+    - [ ] `Sgez`
+    - [ ] `Sgt`
+    - [ ] `Sgtz`
+    - [ ] `Sle`
+    - [ ] `Slez`
+    - [ ] `Slt`
+    - [ ] `Sltz`
+    - [ ] `Sna`
+    - [ ] `Snaz`
+    - [ ] `Sne`
+    - [ ] `Snez`
+- [ ] Mathematical Operations
+    - [ ] `Abs`
+    - [ ] `Acos`
+    - [ ] `Add`
+    - [ ] `Asin`
+    - [ ] `Atan`
+    - [ ] `Ceil`
+    - [ ] `Cos`
+    - [ ] `Div`
+    - [ ] `Exp`
+    - [ ] `Floor`
+    - [ ] `Log`
+    - [ ] `Max`
+    - [ ] `Min`
+    - [ ] `Mod`
+    - [ ] `Mul`
+    - [ ] `Rand`
+    - [ ] `Round`
+    - [ ] `Sin`
+    - [ ] `Sqrt`
+    - [ ] `Sub`
+    - [ ] `Tan`
+    - [ ] `Trunc`
+- [x] Logic
+    - [x] `And`
+    - [x] `Nor`
+    - [x] `Or`
+    - [x] `Xor`
+- [ ] Stack
+    - [ ] `Peek`
+    - [ ] `Pop`
+    - [ ] `Push`
+- [ ] Misc
+    - [x] `Alias`
+    - [ ] `Define`
+    - [ ] `Hcf`
+    - [x] `Move`
+    - [ ] `Sleep`
+    - [ ] `Yield`
+- [ ] Label
+    - [ ] `Label`
