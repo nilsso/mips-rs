@@ -198,18 +198,15 @@ f_group_misc = _{ f_alias | f_define | f_hcf | f_move | f_sleep | f_yield }
 /* Label */
 f_label  = !{ tkn ~ ":" }
 
-function = _{
+f_groups = _{
     f_group_io    | f_group_branch | f_group_select | f_group_math |
     f_group_logic | f_group_stack  | f_group_misc   | f_label
 }
 
 /* ============================================================================================== */
 
-blank = { NEWLINE }
-expr = ${ function ~ WHITESPACE* ~ COMMENT* ~ (NEWLINE | EOI) }
-
-line = _{ expr | blank }
-program = @{ SOI ~ line* }
+expr = ${ WHITESPACE* ~ f_groups? ~ WHITESPACE* ~ COMMENT* }
+program = @{ SOI ~ (expr ~ NEWLINE)* ~ expr? ~ EOI }
 
 COMMENT = _{ "#" ~ (!NEWLINE ~ ANY)* }
 WHITESPACE = _{ " " }

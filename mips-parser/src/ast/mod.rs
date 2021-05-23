@@ -10,10 +10,10 @@ pub mod nodes;
 pub enum AstError {
     Program,
     Expr(String),
-    Func,
+    Func(String),
     Arg(String),
-    Mem,
-    Dev,
+    Mem(String),
+    Dev(String),
     Val(String),
     ParseInt(std::num::ParseIntError),
     ParseFloat(std::num::ParseFloatError),

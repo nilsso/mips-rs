@@ -8,12 +8,16 @@ macro_rules! run {
             println!("{:?}", e);
         }
         let p = p.unwrap();
-        let a = Expr::from_pair(p);
+        let a = Expr::try_from_pair(p);
         if let Err(e) = &a {
             println!("{:?}", e);
         }
         let a = a.unwrap();
-        println!("{} -> {:?}", $s, $state.exec_expr(&a));
+        if let Some(a) = a {
+            println!("{} -> {:?}", $s, $state.exec_expr(&a));
+        } else {
+            println!("{} -> blank", $s);
+        }
     }
 }
 

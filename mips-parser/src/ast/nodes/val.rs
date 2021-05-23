@@ -20,11 +20,11 @@ pub enum Val {
 }
 
 impl Val {
-    pub fn from_pair(pair: Pair<Rule>) -> AstResult<Self> {
+    pub fn try_from_pair(pair: Pair<Rule>) -> AstResult<Self> {
         let val = match pair.as_rule() {
-            Rule::val => Val::from_pair(pair.first_inner()?)?,
+            Rule::val => Val::try_from_pair(pair.first_inner()?)?,
             Rule::num => Val::ValLit(pair_to_float(pair)?),
-            Rule::mem => Val::ValMem(Mem::from_pair(pair)?),
+            Rule::mem => Val::ValMem(Mem::try_from_pair(pair)?),
             _ => return Err(AstError::Val(format!("{:?}", pair))),
         };
         Ok(val)

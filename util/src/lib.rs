@@ -21,3 +21,14 @@ macro_rules! impl_is_as_inner {
     };
 }
 
+#[macro_export]
+macro_rules! mips_ast_test {
+    ($name:ident, $mips:literal, $rule:path, $ast:ty, $res:expr) => {
+        #[test]
+        fn $name() {
+            let peg = MipsParser::parse($rule, $mips).unwrap().first_inner().unwrap();
+            let ast = <$ast>::try_from_pair(peg).unwrap();
+            assert_eq!(ast, $res);
+        }
+    }
+}

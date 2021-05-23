@@ -20,14 +20,14 @@ pub enum Arg {
 }
 
 impl Arg {
-    pub fn from_pair(pair: Pair<Rule>) -> AstResult<Self> {
+    pub fn try_from_pair(pair: Pair<Rule>) -> AstResult<Self> {
         let rule = pair.as_rule();
         let arg = match rule {
-            Rule::reg => Arg::from_pair(pair.first_inner()?)?,
-            Rule::mem | Rule::mem_lit => Arg::ArgMem(Mem::from_pair(pair)?),
-            Rule::dev | Rule::dev_lit => Arg::ArgDev(Dev::from_pair(pair)?),
+            Rule::reg => Arg::try_from_pair(pair.first_inner()?)?,
+            Rule::mem | Rule::mem_lit => Arg::ArgMem(Mem::try_from_pair(pair)?),
+            Rule::dev | Rule::dev_lit => Arg::ArgDev(Dev::try_from_pair(pair)?),
             Rule::alias => Arg::ArgAlias(pair.as_str().into()),
-            Rule::val => Arg::ArgVal(Val::from_pair(pair)?),
+            Rule::val => Arg::ArgVal(Val::try_from_pair(pair)?),
             Rule::tkn => Arg::ArgToken(pair.as_str().into()),
             Rule::num => Arg::ArgVal(Val::ValLit(pair_to_float(pair)?)),
             _ => return Err(AstError::Arg(format!("{:?}", pair))),

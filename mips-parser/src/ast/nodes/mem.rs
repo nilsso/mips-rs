@@ -17,9 +17,9 @@ impl Mem {
     ///
     /// Should be called on outer most `Rule::mem` pair,
     /// so that all scenarios (base, alias, indirect) are handled.
-    pub fn from_pair(pair: Pair<Rule>) -> AstResult<Self> {
+    pub fn try_from_pair(pair: Pair<Rule>) -> AstResult<Self> {
         let mem = match pair.as_rule() {
-            Rule::reg | Rule::mem => Mem::from_pair(pair.first_inner()?)?,
+            Rule::reg | Rule::mem => Mem::try_from_pair(pair.first_inner()?)?,
             Rule::mem_lit => {
                 let s = pair.as_str();
                 let indirections = s.bytes().filter(|b| *b == b'r').count() as usize - 1;
@@ -27,7 +27,7 @@ impl Mem {
                 Mem::MemLit(base_index, indirections)
             },
             Rule::alias => Mem::MemAlias(pair.as_str().into()),
-            _ => return Err(AstError::Mem),
+            _ => return Err(AstError::Mem(format!("{:?}", pair))),
         };
         Ok(mem)
     }

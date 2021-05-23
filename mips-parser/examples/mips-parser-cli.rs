@@ -5,12 +5,21 @@
 #![allow(unused_parens)]
 
 use std::fs::File;
-use std::io::{stdin, BufRead, BufReader};
+use std::fs::read_to_string;
+use std::io::prelude::*;
+use std::io::Error as IOError;
 
 use clap::{load_yaml, App, ArgMatches};
 use pest::{error::Error as PestError, iterators::Pairs};
 
 use mips_parser::prelude::*;
+
+#[derive(Debug)]
+enum Error {
+    IOError(IOError),
+    PestError(PestError<Rule>),
+    AstError(AstError),
+}
 
 fn main() {
     if let Err(err) = cli() {
@@ -18,7 +27,7 @@ fn main() {
     }
 }
 
-fn cli() -> Result<(), std::io::Error> {
+fn cli() -> Result<(), Error> {
     let yaml = load_yaml!("mips-parser-cli.yaml");
     let matches = App::from_yaml(yaml).get_matches();
 
@@ -31,13 +40,30 @@ fn cli() -> Result<(), std::io::Error> {
     let as_ast = (output == "ast");
 
     if let Some(path) = file {
-        let file = std::fs::File::open(path)?;
-        for line in std::io::BufReader::new(file).lines() {
-            exec_line(&line?, as_peg, as_ast, pretty);
+        let input = read_to_string(path).map_err(Error::IOError)?;
+        let peg = MipsParser::parse(Rule::program, &input).map_err(Error::PestError)?;
+        let pair = peg.first_inner().map_err(Error::AstError)?;
+        if as_peg {
+            if pretty {
+                println!("{:#?}", pair);
+            } else {
+                println!("{:?}", pair);
+            }
+            return Ok(());
         }
+        let ast = Program::try_from_pair(pair).map_err(Error::AstError)?;
+        if as_ast {
+            if pretty {
+                println!("{:#?}", ast);
+            } else {
+                println!("{:?}", ast);
+            }
+            return Ok(());
+        }
+        println!("{}", ast);
     } else {
-        let stdin = std::io::stdin();
         let mut buffer = String::new();
+        let stdin = std::io::stdin();
         while stdin.read_line(&mut buffer).map(|b| b > 0).unwrap_or(false) {
             let line = buffer.to_owned();
             buffer.clear();
@@ -70,19 +96,25 @@ fn exec_line(line: &String, as_peg: bool, as_ast: bool, pretty: bool) {
         }
         return;
     }
-    let ast_res = Expr::from_pair(pair).map_err(MipsParserError::AstError);
+    let ast_res = Expr::try_from_pair(pair).map_err(MipsParserError::AstError);
     if let Err(e) = &ast_res {
         println!("{:?}", e);
         return;
     }
     let ast = ast_res.unwrap();
-    if as_ast {
-        if pretty {
-            println!("{:#?}", ast);
-        } else {
-            println!("{:?}", ast);
+    if let Some(expr) = ast {
+        // print expression as AST
+        if as_ast {
+            if pretty {
+                println!("{:#?}", expr);
+            } else {
+                println!("{:?}", expr);
+            }
+            return;
         }
-        return;
+        // print expression as MIPS
+        println!("{}", expr);
+    } else {
+        println!("(blank)");
     }
-    println!("{}", ast);
 }

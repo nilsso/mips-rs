@@ -17,9 +17,9 @@ impl Dev {
     ///
     /// Should be called on outer most `Rule::dev` pair,
     /// so that all scenarios (base, alias, indirect) are handled.
-    pub fn from_pair(pair: Pair<Rule>) -> AstResult<Self> {
+    pub fn try_from_pair(pair: Pair<Rule>) -> AstResult<Self> {
         let mem = match pair.as_rule() {
-            Rule::reg | Rule::dev => Dev::from_pair(pair.first_inner()?)?,
+            Rule::reg | Rule::dev => Dev::try_from_pair(pair.first_inner()?)?,
             Rule::dev_lit => {
                 let s = pair.as_str();
                 let indirections = s.bytes().filter(|b| *b == b'r').count() as usize;
@@ -27,7 +27,7 @@ impl Dev {
                 Dev::DevLit(base_index, indirections)
             }
             Rule::alias => Dev::DevAlias(pair.as_str().into()),
-            _ => return Err(AstError::Dev),
+            _ => return Err(AstError::Dev(format!("{:?}", pair))),
         };
         Ok(mem)
     }

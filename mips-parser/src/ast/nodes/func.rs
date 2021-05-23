@@ -14,10 +14,10 @@ macro_rules! functions {
         }
 
         impl Func {
-            pub fn from_rule(rule: Rule) -> AstResult<Self> {
+            pub fn try_from_rule(rule: Rule) -> AstResult<Self> {
                 let func = match rule {
                     $( Rule::$rule => Func::$enum_variant, )*
-                    _ => return Err(AstError::Func),
+                    _ => return Err(AstError::Func(format!("{:?}", rule))),
                 };
                 Ok(func)
             }

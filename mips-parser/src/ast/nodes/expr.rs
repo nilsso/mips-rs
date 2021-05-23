@@ -4,7 +4,7 @@ use std::{fmt, fmt::Display};
 use itertools::join;
 use pest::iterators::Pair;
 
-use crate::ast::{AstError, AstResult};
+use crate::ast::{FirstInner, AstError, AstResult};
 use crate::Rule;
 
 use super::{Arg, Func};
@@ -17,17 +17,18 @@ use super::{Arg, Func};
 pub struct Expr(pub Func, pub Vec<Arg>);
 
 impl Expr {
-    /// New expression node from Pest pair.
-    pub fn from_pair(pair: Pair<Rule>) -> AstResult<Self> {
+    /// New expression node from Pest `func` pair.
+    pub fn try_from_pair(pair: Pair<Rule>) -> AstResult<Option<Self>> {
         let expr = match pair.as_rule() {
             Rule::expr => {
-                let arg_pairs = pair.into_inner().next().unwrap();
-                let func = Func::from_rule(arg_pairs.as_rule())?;
-                let args = arg_pairs
-                    .into_inner()
-                    .map(Arg::from_pair)
-                    .collect::<AstResult<Vec<Arg>>>()?;
-                Expr(func, args)
+                pair.first_inner().map_or(Ok(None), |func_pair| {
+                    let func = Func::try_from_rule(func_pair.as_rule())?;
+                    let args = func_pair
+                        .into_inner()
+                        .map(Arg::try_from_pair)
+                        .collect::<AstResult<Vec<Arg>>>()?;
+                    Ok(Some(Expr(func, args)))
+                })?
             }
             _ => return Err(AstError::Expr(format!("{:?}", pair))),
         };
