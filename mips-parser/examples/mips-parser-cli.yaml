@@ -1,5 +1,14 @@
 name: mips-parser-cli
 author: nilsso <nilso@enosis.net>
+about: "Parse Stationeer MIPS source code.
+        Each line is output as either:\n
+        - a parsing expression grammar pair (`output=peg`)\n
+        - an abstract syntax tree           (`output=ast`)\n
+        - MIPS code from constructed AST    (`output=mips`)\n
+        (One is required, but only one is allowed)\n
+        \n
+        Parse a file with `--file <file>`, or each line from stdin\n
+        (if stdin is not streamed, send EOF via Ctrl-D to terminate)"
 settings:
   - ArgRequiredElseHelp
 args:
@@ -8,7 +17,7 @@ args:
       possible_values: [ peg, ast, mips ]
       required: true
   - file:
-      help: Parse file instead of from stdin
+      help: Parse from file instead of stdin
       short: f
       long: file
       required: false
