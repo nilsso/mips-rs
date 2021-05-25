@@ -205,8 +205,13 @@ f_groups = _{
 
 /* ============================================================================================== */
 
-expr = ${ WHITESPACE* ~ f_groups? ~ WHITESPACE* ~ COMMENT* }
-program = @{ SOI ~ (expr ~ NEWLINE)* ~ expr? ~ EOI }
+arg = _{ mem | dev | val | alias | tkn }
+
+expr = ${ WHITESPACE* ~ f_groups ~ WHITESPACE* ~ COMMENT* }
+line = ${ expr | (WHITESPACE* ~ COMMENT*) }
+
+program = @{ SOI ~ (line ~ NEWLINE)* ~ line? ~ EOI }
 
 COMMENT = _{ "#" ~ (!NEWLINE ~ ANY)* }
 WHITESPACE = _{ " " }
+

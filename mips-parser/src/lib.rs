@@ -10,6 +10,7 @@
 //! [pairs]: https://docs.rs/pest/2.1.3/pest/iterators/struct.Pairs.html
 //! [ast]: https://en.wikipedia.org/wiki/Abstract_syntax_tree
 #![feature(bool_to_option)]
+#![feature(associated_type_defaults)]
 
 use pest_derive::Parser;
 
@@ -18,9 +19,9 @@ use pest_derive::Parser;
 #[grammar = "mips.pest"]
 pub struct MipsParser;
 
-// Abstract syntax tree (AST) module (all the nodes)
 pub mod ast;
 
+/// MIPS parser error type.
 #[derive(Debug)]
 pub enum MipsParserError {
     IOError(std::io::Error),
@@ -30,8 +31,8 @@ pub enum MipsParserError {
 
 /// All-in-one module.
 pub mod prelude {
-    pub use crate::ast::nodes::{Arg, Dev, Expr, Func, Mem, Program, Val};
-    pub use crate::ast::{AstError, FirstInner};
+    pub use crate::ast::nodes::{Arg, Dev, Expr, Func, Mem, Program, Val, Line};
+    pub use crate::ast::{Node, AstError, FirstInner};
     pub use crate::{MipsParser, MipsParserError, Rule};
     pub use pest::{iterators::Pair, Parser};
 }

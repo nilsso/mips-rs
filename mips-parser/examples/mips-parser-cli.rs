@@ -15,7 +15,7 @@ use pest::{error::Error as PestError, iterators::Pairs};
 use mips_parser::prelude::*;
 
 #[derive(Debug)]
-enum Error {
+enum CliError {
     IOError(IOError),
     PestError(PestError<Rule>),
     AstError(AstError),
@@ -27,8 +27,8 @@ fn main() {
     }
 }
 
-fn cli() -> Result<(), Error> {
-    let yaml = load_yaml!("mips-parser-cli.yaml");
+fn cli() -> Result<(), CliError> {
+    let yaml = load_yaml!("./mips-parser-cli.yaml");
     let matches = App::from_yaml(yaml).get_matches();
 
     let pretty = (matches.occurrences_of("pretty") > 0);
@@ -40,9 +40,9 @@ fn cli() -> Result<(), Error> {
     let as_ast = (output == "ast");
 
     if let Some(path) = file {
-        let input = read_to_string(path).map_err(Error::IOError)?;
-        let peg = MipsParser::parse(Rule::program, &input).map_err(Error::PestError)?;
-        let pair = peg.first_inner().map_err(Error::AstError)?;
+        let input = read_to_string(path).map_err(CliError::IOError)?;
+        let peg = MipsParser::parse(Rule::program, &input).map_err(CliError::PestError)?;
+        let pair = peg.first_inner().map_err(CliError::AstError)?;
         if as_peg {
             if pretty {
                 println!("{:#?}", pair);
@@ -51,7 +51,7 @@ fn cli() -> Result<(), Error> {
             }
             return Ok(());
         }
-        let ast = Program::try_from_pair(pair).map_err(Error::AstError)?;
+        let ast = Program::try_from_pair(pair).map_err(CliError::AstError)?;
         if as_ast {
             if pretty {
                 println!("{:#?}", ast);
@@ -74,7 +74,7 @@ fn cli() -> Result<(), Error> {
 }
 
 fn exec_line(line: &String, as_peg: bool, as_ast: bool, pretty: bool) {
-    let pairs = MipsParser::parse(Rule::expr, &line);
+    let pairs = MipsParser::parse(Rule::line, &line);
     if let Err(e) = &pairs {
         println!("{:?}", e);
         return;
@@ -96,7 +96,7 @@ fn exec_line(line: &String, as_peg: bool, as_ast: bool, pretty: bool) {
         }
         return;
     }
-    let ast_res = Expr::try_from_pair(pair).map_err(MipsParserError::AstError);
+    let ast_res = Line::try_from_pair(pair).map_err(MipsParserError::AstError);
     if let Err(e) = &ast_res {
         println!("{:?}", e);
         return;

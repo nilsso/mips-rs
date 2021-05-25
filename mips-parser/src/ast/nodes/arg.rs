@@ -2,10 +2,10 @@ use std::{fmt, fmt::Display};
 
 use pest::iterators::Pair;
 
-use util::impl_is_as_inner;
+use util::is_as_inner;
 
 use crate::Rule;
-use crate::ast::{pair_to_float, FirstInner, AstError, AstResult};
+use crate::ast::{Node, pair_to_float, FirstInner, AstError, AstResult};
 
 use super::{Mem, Dev, Val};
 
@@ -20,7 +20,21 @@ pub enum Arg {
 }
 
 impl Arg {
-    pub fn try_from_pair(pair: Pair<Rule>) -> AstResult<Self> {
+    #[rustfmt::skip]
+    is_as_inner!(Arg, AstError, AstError::WrongArg, [
+        (Arg::ArgMem,   is_mem,   as_mem,   mem,   &Mem),
+        (Arg::ArgDev,   is_dev,   as_dev,   dev,   &Dev),
+        (Arg::ArgAlias, is_alias, as_alias, alias, &String),
+        (Arg::ArgVal,   is_val,   as_val,   val,   &Val),
+        (Arg::ArgToken, is_token, as_token, token, &String)
+    ]);
+}
+
+impl Node for Arg {
+    /// Rule [`Rule::arg`].
+    const RULE: Rule = Rule::arg;
+
+    fn try_from_pair(pair: Pair<Rule>) -> AstResult<Self> {
         let rule = pair.as_rule();
         let arg = match rule {
             Rule::reg => Arg::try_from_pair(pair.first_inner()?)?,
@@ -34,19 +48,7 @@ impl Arg {
         };
         Ok(arg)
     }
-
-    pub fn as_string(&self) -> &String {
-        match self {
-            Self::ArgToken(s) => s,
-            _ => unreachable!(),
-        }
-    }
 }
-
-impl_is_as_inner!(Arg, Arg::ArgMem,   is_mem,   as_mem,   mem,   Mem);
-impl_is_as_inner!(Arg, Arg::ArgDev,   is_dev,   as_dev,   dev,   Dev);
-impl_is_as_inner!(Arg, Arg::ArgVal,   is_val,   as_val,   val,   Val);
-impl_is_as_inner!(Arg, Arg::ArgToken, is_token, as_token, token, String);
 
 impl Display for Arg {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {

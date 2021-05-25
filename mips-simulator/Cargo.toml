@@ -16,5 +16,10 @@ mips-parser = { path = "../mips-parser" }
 util = { path = "../util" }
 serde = { version = "*", features = ["derive"] }
 ron = "*"
+maplit = "1.0.2"
 #thiserror = "1.0.20"
+
+[dev-dependencies]
+clap = { version = "*", features = ["yaml"] }
+rustyline = "*"
 

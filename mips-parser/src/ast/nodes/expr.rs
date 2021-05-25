@@ -4,31 +4,35 @@ use std::{fmt, fmt::Display};
 use itertools::join;
 use pest::iterators::Pair;
 
-use crate::ast::{FirstInner, AstError, AstResult};
+use crate::ast::{FirstInner, Node, AstError, AstResult};
 use crate::Rule;
 
 use super::{Arg, Func};
 
 /// Expression node.
 ///
-/// Stationeers MIPS code consists of only expressions, in the form of labels
-/// or function calls.
+/// Stationeers MIPS code consists of only expressions
+/// in the form of labels or function calls
+/// (though for simplicity's sake `label` is expressed as a node with no arguments).
 #[derive(Clone, PartialEq, Debug)]
 pub struct Expr(pub Func, pub Vec<Arg>);
 
-impl Expr {
-    /// New expression node from Pest `func` pair.
-    pub fn try_from_pair(pair: Pair<Rule>) -> AstResult<Option<Self>> {
+impl Node for Expr {
+    type Output = Self;
+
+    /// Rule [`Rule::expr`]
+    const RULE: Rule = Rule::expr;
+
+    fn try_from_pair(pair: Pair<Rule>) -> AstResult<Self> {
         let expr = match pair.as_rule() {
             Rule::expr => {
-                pair.first_inner().map_or(Ok(None), |func_pair| {
-                    let func = Func::try_from_rule(func_pair.as_rule())?;
-                    let args = func_pair
-                        .into_inner()
-                        .map(Arg::try_from_pair)
-                        .collect::<AstResult<Vec<Arg>>>()?;
-                    Ok(Some(Expr(func, args)))
-                })?
+                let inner = pair.first_inner()?;
+                let func = Func::try_from_rule(inner.as_rule())?;
+                let args = inner
+                    .into_inner()
+                    .map(Arg::try_from_pair)
+                    .collect::<AstResult<Vec<Arg>>>()?;
+                Expr(func, args)
             }
             _ => return Err(AstError::Expr(format!("{:?}", pair))),
         };

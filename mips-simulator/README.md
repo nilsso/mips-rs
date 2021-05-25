@@ -6,8 +6,10 @@ The simulator component of `mips-rs`.
 ### TODO
 * implement `DeviceKind` and `Device` structs, along with RON parsing to populate
     stock Stationeers device kinds.
-* figure out how to include `MipsState` private fields without including
-    the `function` module (as `cargo doc --document-private-items` includes it).
+* Consider adding error kind for wrong number of arguments.
+    Not needed when using `mips_parser` to construct the AST since the parser dinstinguishes
+    the number of args from too few or too many,
+    but absolutely needed for manual expression constructions.
 
 * Implement all the functions:
 
@@ -73,7 +75,7 @@ The simulator component of `mips-rs`.
     - [ ] `Brnaz`
     - [ ] `Brne`
     - [ ] `Brnez`
-    - [ ] `J`
+    - [x] `J`
     - [ ] `Jal`
     - [ ] `Jr`
 - [ ] Variable selection

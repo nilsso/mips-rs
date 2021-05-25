@@ -2,7 +2,7 @@ use std::{fmt, fmt::Display};
 
 use pest::iterators::Pair;
 
-use crate::ast::{pair_to_int, AstError, AstResult, FirstInner};
+use crate::ast::{Node, pair_to_int, AstError, AstResult, FirstInner};
 use crate::Rule;
 
 /// Device register node.
@@ -12,12 +12,11 @@ pub enum Dev {
     DevAlias(String),
 }
 
-impl Dev {
-    /// New device register node from Pest pair.
-    ///
-    /// Should be called on outer most `Rule::dev` pair,
-    /// so that all scenarios (base, alias, indirect) are handled.
-    pub fn try_from_pair(pair: Pair<Rule>) -> AstResult<Self> {
+impl Node for Dev {
+    /// Rule [`Rule::dev`]
+    const RULE: Rule = Rule::dev;
+
+    fn try_from_pair(pair: Pair<Rule>) -> AstResult<Self> {
         let mem = match pair.as_rule() {
             Rule::reg | Rule::dev => Dev::try_from_pair(pair.first_inner()?)?,
             Rule::dev_lit => {

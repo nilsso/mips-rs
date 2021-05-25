@@ -5,7 +5,10 @@ The MIPS language parser component of `mips-rs`.
 
 ## Todo and notes
 
-- [ ] Change all nodes errors to have strings
+- [x] Change all nodes errors to have strings
+- [ ] Because `Program::try_from_*` ommits any blank lines, literal jump targets will be wrong
+    without later padding out the lines once more (as is what `mips-simulator` does).
+    Come up with a way to adjust these  literal jump targets.
 
 On stationeering:
 - labels and aliases of same name do not play well together

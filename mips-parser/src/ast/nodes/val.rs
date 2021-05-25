@@ -4,7 +4,7 @@ use super::mem::Mem;
 
 use pest::iterators::Pair;
 
-use crate::ast::{pair_to_float, FirstInner, AstError, AstResult};
+use crate::ast::{Node, pair_to_float, FirstInner, AstError, AstResult};
 use crate::Rule;
 
 /// Value node.
@@ -19,8 +19,11 @@ pub enum Val {
     ValMem(Mem),
 }
 
-impl Val {
-    pub fn try_from_pair(pair: Pair<Rule>) -> AstResult<Self> {
+impl Node for Val {
+    /// Rule [`Rule::val`].
+    const RULE: Rule = Rule::val;
+
+    fn try_from_pair(pair: Pair<Rule>) -> AstResult<Self> {
         let val = match pair.as_rule() {
             Rule::val => Val::try_from_pair(pair.first_inner()?)?,
             Rule::num => Val::ValLit(pair_to_float(pair)?),

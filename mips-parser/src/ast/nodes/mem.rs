@@ -3,7 +3,7 @@ use std::{fmt, fmt::Display};
 use pest::iterators::Pair;
 
 use crate::Rule;
-use crate::ast::{pair_to_int, FirstInner, AstError, AstResult};
+use crate::ast::{Node, pair_to_int, FirstInner, AstError, AstResult};
 
 /// Memory register node.
 #[derive(Clone, PartialEq, Debug)]
@@ -12,12 +12,11 @@ pub enum Mem {
     MemAlias(String),
 }
 
-impl Mem {
-    /// New Mem register node from Pest pair.
-    ///
-    /// Should be called on outer most `Rule::mem` pair,
-    /// so that all scenarios (base, alias, indirect) are handled.
-    pub fn try_from_pair(pair: Pair<Rule>) -> AstResult<Self> {
+impl Node for Mem {
+    /// Rule [`Rule::mem`].
+    const RULE: Rule = Rule::mem;
+
+    fn try_from_pair(pair: Pair<Rule>) -> AstResult<Self> {
         let mem = match pair.as_rule() {
             Rule::reg | Rule::mem => Mem::try_from_pair(pair.first_inner()?)?,
             Rule::mem_lit => {

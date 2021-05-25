@@ -1,23 +1,24 @@
 #[macro_export]
-macro_rules! impl_is_as_inner {
-    ($T:ty, $variant:path, $is:ident, $as:ident, $inner:ident, $inner_type:ty) => {
-        impl $T {
-            #[allow(unused_variables)]
+macro_rules! is_as_inner {
+    ($Self:ty, $Error:ty, $error:path,
+        [$( ($self:path, $is:ident, $as:ident, $inner:ident, $Inner:ty) ),*$(,)*]
+    ) => {
+        $(
             pub fn $is(this: &Self) -> bool {
-                matches!($variant, this)
+                matches!($self, this)
             }
 
             pub fn $as(&self) -> Option<&Self> {
-                <$T>::$is(self).then_some(self)
+                <$Self>::$is(self).then_some(self)
             }
 
-            pub fn $inner(&self) -> Option<$inner_type> {
+            pub fn $inner(&self) -> Result<$Inner, $Error> {
                 match self {
-                    $variant(inner) => Some(inner.clone()),
-                    _ => None,
+                    $self(inner) => Ok(inner),
+                    _ => Err($error(format!(""))),
                 }
             }
-        }
+        )*
     };
 }
 
@@ -26,7 +27,10 @@ macro_rules! mips_ast_test {
     ($name:ident, $mips:literal, $rule:path, $ast:ty, $res:expr) => {
         #[test]
         fn $name() {
-            let peg = MipsParser::parse($rule, $mips).unwrap().first_inner().unwrap();
+            let peg = MipsParser::parse($rule, $mips);
+            println!("{:?}", peg);
+            let peg = peg.unwrap().first_inner().unwrap();
+            println!("{:?}", peg);
             let ast = <$ast>::try_from_pair(peg).unwrap();
             assert_eq!(ast, $res);
         }

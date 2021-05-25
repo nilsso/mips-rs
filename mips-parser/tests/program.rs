@@ -1,6 +1,6 @@
 #![feature(custom_inner_attributes)]
 #![rustfmt::skip::macros(mips_ast_test)]
-use mips_parser::ast::nodes::Program;
+use mips_parser::prelude::{Node, Program};
 
 #[test]
 fn program1() {
@@ -24,6 +24,6 @@ move x 1
 move y 2
 add z x y
 ";
-    let res = Program::try_from_str(input);
+    let res = Program::try_from_str(&input);
     assert_eq!(res.unwrap().to_string(), output);
 }
