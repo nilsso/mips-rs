@@ -1,4 +1,4 @@
-//! Integrated Circuit (IC10) simulator.
+//! IC10 state and simulator component of `mips-rs`.
 //!
 //! A new simulator state can be constructed via [`ICState::default`] for one with
 //! (per how IC10 chips are in Stationeers):
@@ -18,9 +18,143 @@
 //! `mem_size-1`-th register and likewise the `mem_size-2`-th register for `ra`,
 //! regardless of how the `sp` and `ra` *aliases* are set.
 //!
-//! ## TODO
-//!
+//! ### TODO
 //! - Implement devices and add the `db` self device alias.
+//! * Implement `DeviceKind` and `Device` structs, along with RON parsing to populate
+//!     stock Stationeers device kinds.
+//! * Consider adding error kind for wrong number of arguments.
+//!     Not needed when using `mips_parser` to construct the AST since the parser dinstinguishes
+//!     the number of args from too few or too many,
+//!     but absolutely needed for manual expression constructions.
+//!
+//! * Implement all the functions:
+//!
+//! - [ ] Device IO
+//!     - [ ] `Bdns`
+//!     - [ ] `Bdnsal`
+//!     - [ ] `Bdse`
+//!     - [ ] `Bdseal`
+//!     - [ ] `Brdns`
+//!     - [ ] `Brdse`
+//!     - [ ] `L`
+//!     - [ ] `Lb`
+//!     - [ ] `Lr`
+//!     - [ ] `Ls`
+//!     - [ ] `S`
+//!     - [ ] `Sb`
+//! - [ ] Flow Control, Branches and Jumps
+//!     - [ ] `Bap`
+//!     - [ ] `Bapal`
+//!     - [ ] `Bapz`
+//!     - [ ] `Bapzal`
+//!     - [ ] `Beq`
+//!     - [ ] `Beqal`
+//!     - [ ] `Beqz`
+//!     - [ ] `Beqzal`
+//!     - [ ] `Bge`
+//!     - [ ] `Bgeal`
+//!     - [ ] `Bgez`
+//!     - [ ] `Bgezal`
+//!     - [ ] `Bgt`
+//!     - [ ] `Bgtal`
+//!     - [ ] `Bgtz`
+//!     - [ ] `Bgtzal`
+//!     - [ ] `Ble`
+//!     - [ ] `Bleal`
+//!     - [ ] `Blez`
+//!     - [ ] `Blezal`
+//!     - [ ] `Blt`
+//!     - [ ] `Bltal`
+//!     - [ ] `Bltz`
+//!     - [ ] `Bltzal`
+//!     - [ ] `Bna`
+//!     - [ ] `Bnaal`
+//!     - [ ] `Bnaz`
+//!     - [ ] `Bnazal`
+//!     - [ ] `Bne`
+//!     - [ ] `Bneal`
+//!     - [ ] `Bnez`
+//!     - [ ] `Bnezal`
+//!     - [ ] `Brap`
+//!     - [ ] `Brapz`
+//!     - [ ] `Breq`
+//!     - [ ] `Breqz`
+//!     - [ ] `Brge`
+//!     - [ ] `Brgez`
+//!     - [ ] `Brgt`
+//!     - [ ] `Brgtz`
+//!     - [ ] `Brle`
+//!     - [ ] `Brlez`
+//!     - [ ] `Brlt`
+//!     - [ ] `Brltz`
+//!     - [ ] `Brna`
+//!     - [ ] `Brnaz`
+//!     - [ ] `Brne`
+//!     - [ ] `Brnez`
+//!     - [x] `J`
+//!     - [ ] `Jal`
+//!     - [ ] `Jr`
+//! - [ ] Variable selection
+//!     - [ ] `Sap`
+//!     - [ ] `Sapz`
+//!     - [ ] `Sdns`
+//!     - [ ] `Sdse`
+//!     - [ ] `Select`
+//!     - [ ] `Seq`
+//!     - [ ] `Seqz`
+//!     - [ ] `Sge`
+//!     - [ ] `Sgez`
+//!     - [ ] `Sgt`
+//!     - [ ] `Sgtz`
+//!     - [ ] `Sle`
+//!     - [ ] `Slez`
+//!     - [ ] `Slt`
+//!     - [ ] `Sltz`
+//!     - [ ] `Sna`
+//!     - [ ] `Snaz`
+//!     - [ ] `Sne`
+//!     - [ ] `Snez`
+//! - [ ] Mathematical Operations
+//!     - [ ] `Abs`
+//!     - [ ] `Acos`
+//!     - [ ] `Add`
+//!     - [ ] `Asin`
+//!     - [ ] `Atan`
+//!     - [ ] `Ceil`
+//!     - [ ] `Cos`
+//!     - [ ] `Div`
+//!     - [ ] `Exp`
+//!     - [ ] `Floor`
+//!     - [ ] `Log`
+//!     - [ ] `Max`
+//!     - [ ] `Min`
+//!     - [ ] `Mod`
+//!     - [ ] `Mul`
+//!     - [ ] `Rand`
+//!     - [ ] `Round`
+//!     - [ ] `Sin`
+//!     - [ ] `Sqrt`
+//!     - [ ] `Sub`
+//!     - [ ] `Tan`
+//!     - [ ] `Trunc`
+//! - [x] Logic
+//!     - [x] `And`
+//!     - [x] `Nor`
+//!     - [x] `Or`
+//!     - [x] `Xor`
+//! - [ ] Stack
+//!     - [ ] `Peek`
+//!     - [ ] `Pop`
+//!     - [ ] `Push`
+//! - [ ] Misc
+//!     - [x] `Alias`
+//!     - [ ] `Define`
+//!     - [ ] `Hcf`
+//!     - [x] `Move`
+//!     - [ ] `Sleep`
+//!     - [ ] `Yield`
+//! - [ ] Label
+//!     - [ ] `Label`
 #![feature(bool_to_option)]
 #![feature(result_cloned)]
 #![feature(result_flattening)]
@@ -55,6 +189,7 @@ pub mod prelude {
     pub use crate::Line;
     pub use crate::state::{ICStateError, AliasKind, ICState};
     pub use crate::simulator::{ICSimulator, ICSimulatorError};
+    pub use crate::device::{Device, DeviceKind};
 }
 
 // For documentation links;

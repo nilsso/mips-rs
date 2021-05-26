@@ -3,10 +3,6 @@ name = "mips-simulator"
 version = "0.1.0"
 edition = "2018"
 
-[lib]
-name = "mips_simulator"
-path = "src/lib.rs"
-
 [dependencies]
 mips-parser = { path = "../mips-parser" }
 util = { path = "../util" }

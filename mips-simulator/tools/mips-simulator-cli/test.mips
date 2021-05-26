@@ -1,0 +1,3 @@
+alias x r0
+add x 1 x
+brlt x 3 -1

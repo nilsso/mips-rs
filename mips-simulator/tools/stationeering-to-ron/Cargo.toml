@@ -1,0 +1,14 @@
+[package]
+name = "stationeering_to_ron"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+util = { path = "../../../util" }
+ron = "*"
+serde = { version = "*", features = ["derive"] }
+serde_json = "*"
+clap = { version = "*", features = ["yaml"] }
+regex = "1.3.9"
+
+

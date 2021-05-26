@@ -1,0 +1,22 @@
+name: mips-simulator-cli
+author: nilsso <nilso@enosis.net>
+args:
+  - file:
+      help: Parse from file instead of stdin
+      short: f
+      long: file
+      required: false
+      takes_value: true
+  - kind-file:
+      help: Device kinds RON file
+      short: d
+      required: false
+      takes_value: true
+      default_value: device-kinds.ron
+  - device-conf:
+      help: Device configuration
+      short: D
+      long: device-conf
+      required: false
+      takes_value: true
+

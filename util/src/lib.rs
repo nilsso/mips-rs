@@ -23,6 +23,19 @@ macro_rules! is_as_inner {
 }
 
 #[macro_export]
+macro_rules! impl_from_error {
+    ($T:ty, $($E:tt),*) => {
+        $(
+            impl From<$E> for $T {
+                fn from(e: $E) -> Self {
+                    <$T>::$E(e)
+                }
+            }
+        )*
+    }
+}
+
+#[macro_export]
 macro_rules! mips_ast_test {
     ($name:ident, $mips:literal, $rule:path, $ast:ty, $res:expr) => {
         #[test]

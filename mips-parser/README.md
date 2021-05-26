@@ -1,7 +1,7 @@
 mips-parser 🚀
 ==============
 
-The MIPS language parser component of `mips-rs`.
+The Stationeers MIPS language parser component of `mips-rs`.
 
 ## Todo and notes
 

@@ -1,0 +1,19 @@
+[package]
+name = "mips-simulator-cli"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+mips-parser = { path = "../../../mips-parser" }
+mips-simulator = { path = "../../../mips-simulator" }
+util = { path = "../../../util" }
+#serde = { version = "*", features = ["derive"] }
+ron = "*"
+#maplit = "1.0.2"
+#serde_json = "*"
+#thiserror = "1.0.20"
+clap = { version = "*", features = ["yaml"] }
+rustyline = "*"
+regex = "*"
+
+

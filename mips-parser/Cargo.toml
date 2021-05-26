@@ -3,10 +3,6 @@ name = "mips-parser"
 version = "0.1.0"
 edition = "2018"
 
-[lib]
-name = "mips_parser"
-path = "src/lib.rs"
-
 [dependencies]
 util = { path = "../util" }
 pest = "2.1.3"

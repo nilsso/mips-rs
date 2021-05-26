@@ -1,0 +1,20 @@
+name: stationeering-to-ron
+author: nilsso <nilso@enosis.net>
+about: "\n\
+      Convert logic devices from a Stationeering Things Json file into Ron.\n\
+      Can be acquired from either:\n\
+      - https://data.stationeering.com/things/beta.json, or\n\
+      - https://data.stationeering.com/things/beta.json"
+settings:
+  - ArgRequiredElseHelp
+args:
+  - file:
+      help: Json file with Stationeers things
+      required: true
+      takes_value: true
+  - pretty:
+      help: Output as human readable
+      short: p
+      long: pretty
+      required: false
+
