@@ -1,3 +1,10 @@
 [workspace]
-members = ["mips-parser", "mips-simulator", "util"]
-exclude = ["mips-validator"]
+members = [
+    # Libraries
+    "./mips-parser",
+    "./mips-simulator",
+    "./util",
+    # Simulator tools
+    "./mips-simulator/tools/mips-simulator-cli",
+    "./mips-simulator/tools/stationeering-to-ron"
+]

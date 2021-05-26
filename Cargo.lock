@@ -195,6 +195,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "glob"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
+
+[[package]]
 name = "hermit-abi"
 version = "0.1.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -211,6 +217,12 @@ checksum = "284f18f85651fe11e8a991b2adb42cb078325c996ed026d994719efcfca1d54b"
 dependencies = [
  "either",
 ]
+
+[[package]]
+name = "itoa"
+version = "0.4.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dd25036021b0de88a0aff6b850051563c6516d0bf53f8638938edbb9de732736"
 
 [[package]]
 name = "libc"
@@ -251,7 +263,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "mips-state"
+name = "mips-simulator"
 version = "0.1.0"
 dependencies = [
  "clap",
@@ -260,7 +272,18 @@ dependencies = [
  "ron",
  "rustyline",
  "serde",
+ "serde_json",
  "util",
+]
+
+[[package]]
+name = "mips-simulator-cli"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "mips-parser",
+ "mips-simulator",
+ "rustyline",
 ]
 
 [[package]]
@@ -416,6 +439,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "ryu"
+version = "1.0.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "71d301d4193d031abdd79ff7e3dd721168a9572ef3fe51a1517aba235bd8f86e"
+
+[[package]]
 name = "scopeguard"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -442,6 +471,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_json"
+version = "1.0.64"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "799e97dc9fdae36a5c8b8f2cae9ce2ee9fdce2058c57a93e6099d919fd982f79"
+dependencies = [
+ "itoa",
+ "ryu",
+ "serde",
+]
+
+[[package]]
 name = "sha-1"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -458,6 +498,18 @@ name = "smallvec"
 version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fe0f37c9e8f3c5a4a66ad655a93c74daac4ad00c441533bf5c6e7990bb42604e"
+
+[[package]]
+name = "stationeering_to_ron"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "glob",
+ "ron",
+ "rustyline",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "str-buf"

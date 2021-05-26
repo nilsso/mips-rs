@@ -24,11 +24,13 @@
 #![feature(bool_to_option)]
 #![feature(result_cloned)]
 #![feature(result_flattening)]
+#![feature(map_into_keys_values)]
 
 use std::{fmt, fmt::Display};
 
 use mips_parser::prelude::Expr;
 
+/// Type for either an expression, or for representing a blank line.
 #[derive(Clone, PartialEq, Debug)]
 pub enum Line {
     Expr(usize, Expr),
