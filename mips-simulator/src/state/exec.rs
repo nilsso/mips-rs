@@ -4,8 +4,8 @@ use std::convert::TryFrom;
 
 use mips_parser::prelude::*;
 
+use crate::state::{AliasKind, ICState, ICStateResult};
 use crate::Line;
-use crate::state::{ICState, ICStateResult, AliasKind};
 
 macro_rules! mvv {
     ($args:ident) => {{

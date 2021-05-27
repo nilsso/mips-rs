@@ -164,11 +164,7 @@ impl<'dk> ICState<'dk> {
     // ============================================================================================
 
     /// Try to reduce a memory index by a number of indirections.
-    pub fn index_reduce(
-        &self,
-        mut i: usize,
-        num_indirections: usize,
-    ) -> ICStateResult<usize> {
+    pub fn index_reduce(&self, mut i: usize, num_indirections: usize) -> ICStateResult<usize> {
         for _ in 0..num_indirections {
             let j = self.get_mem(i)?;
             i = usize::try_from(i as isize * (*j) as isize)?;

@@ -189,7 +189,7 @@ pub mod prelude {
     pub use crate::Line;
     pub use crate::state::{ICStateError, AliasKind, ICState};
     pub use crate::simulator::{ICSimulator, ICSimulatorError};
-    pub use crate::device::{Device, DeviceKind};
+    pub use crate::device::{Device, DeviceKind, DeviceKinds};
 }
 
 // For documentation links;

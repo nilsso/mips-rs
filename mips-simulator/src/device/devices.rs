@@ -17,8 +17,8 @@ pub struct DeviceKind {
     pub params: Vec<ParamKind>,
 }
 
-/// Shortcut for `HashMap<String, DeviceKind>`.
-#[allow(dead_code)]
+/// Shortcut type for HashMap<String, DeviceKind>.
+// #[allow(dead_code)]
 pub type DeviceKinds = HashMap<String, DeviceKind>;
 
 /// Device kinds deserialization error kinds.
@@ -75,11 +75,16 @@ impl<'dk> Display for Device<'dk> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_fmt(format_args!("{} {{\n", self.kind.name))?;
         for (k, v) in self.params.iter() {
-            f.write_fmt(format_args!("    {}: {} ({})\n", k, v.read_internal(), match v {
-                Param::Read(_) => "R",
-                Param::Write(_) => "W",
-                Param::ReadWrite(_) => "RW",
-            }))?;
+            f.write_fmt(format_args!(
+                "    {}: {} ({})\n",
+                k,
+                v.read_internal(),
+                match v {
+                    Param::Read(_) => "R",
+                    Param::Write(_) => "W",
+                    Param::ReadWrite(_) => "RW",
+                }
+            ))?;
         }
         f.write_str("}")
     }
