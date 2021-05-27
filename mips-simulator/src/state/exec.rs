@@ -1,10 +1,63 @@
+#![allow(unused_macros)]
+#[allow(unused_imports)]
+use std::convert::TryFrom;
+
 use mips_parser::prelude::*;
 
 use crate::Line;
 use crate::state::{ICState, ICStateResult, AliasKind};
 
+macro_rules! mvv {
+    ($args:ident) => {{
+        let i = $args.mem(0)?;
+        let a = $args.val(1)?;
+        let b = $args.val(2)?;
+        (i, a, b)
+    }};
+}
+
+macro_rules! di {
+    ($args:ident) => {{
+        let d = $args.dev(0)?;
+        let i = $args.index(1)?;
+        (d, i)
+    }};
+}
+
+macro_rules! dv {
+    ($args:ident) => {{
+        let d = $args.dev(0)?;
+        let v = $args.val(1)?;
+        (d, v)
+    }};
+}
+
+macro_rules! vvv {
+    ($args:ident) => {{
+        let a = $args.val(0)?;
+        let b = $args.val(1)?;
+        let c = $args.val(2)?;
+        (a, b, c)
+    }};
+}
+
+macro_rules! i {
+    ($args:ident) => {{
+        $args.val(0)? as isize
+    }};
+}
+
+macro_rules! vvi {
+    ($args:ident) => {{
+        let a = $args.val(0)?;
+        let b = $args.val(1)?;
+        let i = $args.index(2)?;
+        (a, b, i)
+    }};
+}
+
 impl<'dk> ICState<'dk> {
-    pub fn try_exec_line(&mut self, line: &Line) -> ICStateResult<bool> {
+    pub fn exec_line(&mut self, line: &Line) -> ICStateResult<bool> {
         use Func::*;
 
         let mut jumped = false;
@@ -15,18 +68,48 @@ impl<'dk> ICState<'dk> {
             #[rustfmt::skip]
             match func {
                 // Device IO
-                Bdns   => {},
-                Bdnsal => {},
-                Bdse   => {},
-                Bdseal => {},
-                Brdns  => {},
-                Brdse  => {},
-                L      => {},
+                Bdns   => {
+                    let (d, l) = dv!(args);
+                    jumped = self.jump_helper(l, false, false, !self.is_dev_set(d)?)?;
+                },
+                Bdnsal => {
+                    let (d, l) = dv!(args);
+                    jumped = self.jump_helper(l, false, true, !self.is_dev_set(d)?)?;
+                },
+                Bdse   => {
+                    let (d, l) = dv!(args);
+                    jumped = self.jump_helper(l, false, false, self.is_dev_set(d)?)?;
+                },
+                Bdseal => {
+                    let (d, l) = dv!(args);
+                    jumped = self.jump_helper(l, false, true, self.is_dev_set(d)?)?;
+                },
+                Brdns  => {
+                    let (d, l) = dv!(args);
+                    jumped = self.jump_helper(l, true, false, !self.is_dev_set(d)?)?;
+                },
+                Brdse  => {
+                    let (d, l) = dv!(args);
+                    jumped = self.jump_helper(l, true, false, self.is_dev_set(d)?)?;
+                },
+                L      => {
+                    let r = args.mem(0)?;
+                    let d = args.dev(1)?;
+                    let t = args.tkn(2)?;
+                    let dev = self.get_dev(d)?;
+                    let param_value = dev.read(t)?;
+                    self.set_mem(r, param_value)?;
+                },
                 Lb     => {},
                 Lr     => {},
                 Ls     => {},
                 S      => {},
-                Sb     => {},
+                Sb     => {
+                    let h = args.val(0)?;
+                    let t = args.tkn(1)?;
+                    let v = args.val(2)?;
+                    self.dev_network_write(h as i64, &t, v)?;
+                },
                 // Flow Control, Branches and Jumps
                 Bap    => {},
                 Bapal  => {},
@@ -71,12 +154,8 @@ impl<'dk> ICState<'dk> {
                 Brle   => {},
                 Brlez  => {},
                 Brlt   => {
-                    let a = args.val(0)?;
-                    let b = args.val(1)?;
-                    let i = args.val(2)?;
-                    // println!("{} < {} = {}", a, b, a < b);
-                    jumped = self.try_jump_helper(i, true, false, a < b)?;
-                    // let a = self.try_arg_val_reduce(&
+                    let (a, b, l) = vvv!(args);
+                    jumped = self.jump_helper(l, true, false, a < b)?;
                 },
                 Brltz  => {},
                 Brna   => {},
@@ -84,14 +163,17 @@ impl<'dk> ICState<'dk> {
                 Brne   => {},
                 Brnez  => {},
                 J      => {
-                    let i = args.val(0)?;
-                    jumped = self.try_jump_helper(i, false, false, true)?;
+                    let l = args.val(0)?;
+                    jumped = self.jump_helper(l, false, false, true)?;
                 },
                 Jal    => {
-                    let i = args.val(0)?;
-                    jumped = self.try_jump_helper(i, false, true, true)?;
+                    let l = args.val(0)?;
+                    jumped = self.jump_helper(l, false, true, true)?;
                 },
-                Jr     => {},
+                Jr     => {
+                    let l = args.val(0)?;
+                    jumped = self.jump_helper(l, true, false, true)?;
+                },
                 // Variable Selection
                 Sap    => {},
                 Sapz   => {},
@@ -116,8 +198,8 @@ impl<'dk> ICState<'dk> {
                 Abs    => {},
                 Acos   => {},
                 Add    => {
-                    let (i, a, b) = args.mvv()?;
-                    self.try_set_mem(i, a + b)?;
+                    let (i, a, b) = mvv!(args);
+                    self.set_mem(i, a + b)?;
                 },
                 Asin   => {},
                 Atan   => {},
@@ -140,20 +222,20 @@ impl<'dk> ICState<'dk> {
                 Trunc  => {},
                 // Logic
                 And    => {
-                    let (i, a, b) = args.mvv()?;
-                    self.try_set_mem(i, bool_to_val((a > 0.0) || (b > 0.0)))?;
+                    let (i, a, b) = mvv!(args);
+                    self.set_mem(i, bool_to_val((a > 0.0) || (b > 0.0)))?;
                 },
                 Nor    => {
-                    let (i, a, b) = args.mvv()?;
-                    self.try_set_mem(i, bool_to_val(!((a > 0.0) || (b > 0.0))))?;
+                    let (i, a, b) = mvv!(args);
+                    self.set_mem(i, bool_to_val(!((a > 0.0) || (b > 0.0))))?;
                 },
                 Or     => {
-                    let (i, a, b) = args.mvv()?;
-                    self.try_set_mem(i, bool_to_val((a > 0.0) || (b > 0.0)))?;
+                    let (i, a, b) = mvv!(args);
+                    self.set_mem(i, bool_to_val((a > 0.0) || (b > 0.0)))?;
                 },
                 Xor    => {
-                    let (i, a, b) = args.mvv()?;
-                    self.try_set_mem(i, bool_to_val(a != b))?;
+                    let (i, a, b) = mvv!(args);
+                    self.set_mem(i, bool_to_val(a != b))?;
                 },
                 // Stack
                 Peek   => {},
@@ -161,7 +243,7 @@ impl<'dk> ICState<'dk> {
                 Push   => {},
                 // Misc
                 Alias  => {
-                    let t = args.token(0)?;
+                    let t = args.tkn(0)?;
                     let a = args.reg(1)?;
                     self.set_alias(t, a);
                 },
@@ -170,13 +252,13 @@ impl<'dk> ICState<'dk> {
                 Move   => {
                     let m = args.mem(0)?;
                     let v = args.val(1)?;
-                    self.try_set_mem(m, v)?;
+                    self.set_mem(m, v)?;
                 },
                 Sleep  => {},
                 Yield  => {},
                 // Label
                 Label  => {
-                    let l = args.token(0)?;
+                    let l = args.tkn(0)?;
                     self.set_alias(l, AliasKind::Label(*i));
                 },
             };

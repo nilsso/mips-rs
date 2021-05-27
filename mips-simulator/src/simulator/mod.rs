@@ -71,7 +71,7 @@ impl<'dk> ICSimulator<'dk> {
 
         let line = &self.lines[i];
 
-        let jumped = self.state.try_exec_line(line).map_err(ICSimulatorError::StateError)?;
+        let jumped = self.state.exec_line(line).map_err(ICSimulatorError::StateError)?;
         if !jumped {
             self.state.next_line_index += 1;
         }

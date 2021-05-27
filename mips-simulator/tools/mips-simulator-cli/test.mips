@@ -1,3 +1,5 @@
 alias x r0
+main:
 add x 1 x
-brlt x 3 -1
+sb -851746783 Setting x
+j main

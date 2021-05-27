@@ -2,12 +2,12 @@
 use std::collections::HashMap;
 use std::io::Error as IoError;
 use std::path::PathBuf;
+use std::{fmt, fmt::Display};
 
 use ron::de::Error as RonError;
 use serde::Deserialize;
 
 use super::params::{Param, ParamKind, Params};
-use super::DeviceError;
 
 /// Device kind type.
 #[derive(Clone, Debug, Deserialize)]
@@ -56,11 +56,33 @@ impl DeviceKind {
     }
 }
 
+#[derive(Clone, Debug)]
+pub enum DeviceError {
+    Unset,
+    UnknownParam(String),
+    ReadOnly,
+    WriteOnly,
+}
+
 /// Device type.
 #[derive(Clone, Debug)]
 pub struct Device<'dk> {
     pub kind: &'dk DeviceKind,
     pub params: Params,
+}
+
+impl<'dk> Display for Device<'dk> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_fmt(format_args!("{} {{\n", self.kind.name))?;
+        for (k, v) in self.params.iter() {
+            f.write_fmt(format_args!("    {}: {} ({})\n", k, v.read_internal(), match v {
+                Param::Read(_) => "R",
+                Param::Write(_) => "W",
+                Param::ReadWrite(_) => "RW",
+            }))?;
+        }
+        f.write_str("}")
+    }
 }
 
 impl<'dk> Device<'dk> {

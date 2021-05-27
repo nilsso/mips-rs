@@ -6,16 +6,16 @@
 
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::{Error as IOError, BufReader, BufRead};
+use std::io::{BufRead, BufReader, Error as IOError};
 use std::path::Path;
 
 use clap::{load_yaml, App, ArgMatches};
+use regex::Regex;
 use ron::{de::from_reader, Error as RonError};
 use rustyline::error::ReadlineError;
-use regex::Regex;
 
 use mips_parser::prelude::{Expr, MipsParserError, Node, Program};
-use mips_simulator::prelude::{DeviceKind, ICSimulator, ICStateError, ICState, Line};
+use mips_simulator::prelude::{DeviceKind, ICSimulator, ICState, ICStateError, Line};
 use util::impl_from_error;
 
 type Editor = rustyline::Editor<()>;
@@ -30,7 +30,37 @@ enum CliError {
     ICStateError(ICStateError),
 }
 
-impl_from_error!(CliError, ReadlineError, MipsParserError, IOError, RonError, ICStateError);
+impl_from_error!(
+    CliError,
+    ReadlineError,
+    MipsParserError,
+    IOError,
+    RonError,
+    ICStateError
+);
+
+const WARN_DEVICE_KINDS: &'static str =
+    "Warning: No device kinds file loaded, device interactions will fail
+Download a Stationeers thing file from one of the following,
+and compile it to Ron via the `stationeering-to-ron` tool:
+    - https://data.stationeering.com/things/beta.json, or
+    - https://data.stationeering.com/things/public.json";
+
+const HELP_PROGRAM: &'static str = "    \"EOL\"             - finish
+    \"help\" or \"h\"     - print this message again
+    \"reinit\"          - reinitialize the simulation
+    \"program\"         - display the program
+    \"status\"          - display state details
+    \"<n>\"             - step <n> times
+    \"\"                - step once";
+
+const HELP_DEVICE: &'static str = "    \"EOL\"             - finish
+    \"help\" or \"h\"     - print this message again
+    \"add <id> <kind>\" - assign device of <kind> to register <id>
+    \"add n    <kind>\" - assign device of <kind> to the network
+    \"rm  <id>\"        - remove device at register <id>
+    \"list\"            - list device kinds
+    \"status\"          - display currently set devices";
 
 fn main() -> Result<(), CliError> {
     let mut rl = Editor::new();
@@ -45,11 +75,7 @@ fn main() -> Result<(), CliError> {
         let file = File::open(kinds_path)?;
         from_reader(file)?
     } else {
-        println!("Warning: No device kinds file loaded, device interactions will fail
-Download a Stationeers thing file from one of the following,
-and compile it to Ron via the `stationeering-to-ron` tool:
-    - https://data.stationeering.com/things/beta.json, or
-    - https://data.stationeering.com/things/public.json, or");
+        println!("{}", WARN_DEVICE_KINDS);
         HashMap::new()
     };
 
@@ -104,17 +130,30 @@ fn configure_devices<'dk>(
     rl: &mut Editor,
 ) -> Result<(), CliError> {
     if let Some(conf) = conf {
-        let pattern = Regex::new(r"\s*(\d+)\s*(\w+)").unwrap();
+        let n_pattern = Regex::new(r"\s*n\s*(\d+)\s*(\w+)").unwrap();
+        let i_pattern = Regex::new(r"\s*(\d+)\s*(\w+)").unwrap();
 
         let file = File::open(conf)?;
         let reader = BufReader::new(file);
         for (i, line) in reader.lines().enumerate() {
-            if let Some(groups) = pattern.captures(&line?) {
+            let line = line?;
+            if let Some(groups) = n_pattern.captures(&line) {
+                let n = groups.get(1).unwrap().as_str().parse::<usize>().unwrap();
+                let key = groups.get(2).unwrap().as_str();
+                if let Some(kind) = kinds.get(key) {
+                    for _ in 0..n {
+                        let dev = kind.make();
+                        state.dev_network_add(dev);
+                    }
+                } else {
+                    println!("Error: device kind {} not-found, skipping", key);
+                }
+            } else if let Some(groups) = i_pattern.captures(&line) {
                 let i = groups.get(1).unwrap().as_str().parse::<usize>().unwrap();
                 let key = groups.get(2).unwrap().as_str();
                 if let Some(kind) = kinds.get(key) {
                     let dev = kind.make();
-                    state.try_set_dev(i, Some(dev))?;
+                    state.set_dev(i, Some(dev))?;
                 } else {
                     println!("Error: device kind {} not-found, skipping", key);
                 }
@@ -123,23 +162,16 @@ fn configure_devices<'dk>(
             }
         }
     } else {
-        let help = "    \"EOL\"             - finish
-    \"help\" or \"h\"     - print this message again
-    \"add <id> <kind>\" - assign device of <kind> to register <id>
-    \"rm  <id>\"        - remove device at register <id>
-    \"list\"            - list device kinds
-    \"status\"          - display currently set devices";
-
-        println!("Configure devices:\n{}", help);
-        let add_pattern = Regex::new(r"add\s+(\d+)\s+(\w+)").unwrap();
+        println!("Configure devices:\n{}", HELP_DEVICE);
+        let add_i_pattern = Regex::new(r"add\s+(\d+)\s+(\w+)").unwrap();
+        let add_n_pattern = Regex::new(r"add\s+n\s+(\w+)").unwrap();
         let rm_pattern = Regex::new(r"rm\s+(\d+)").unwrap();
         loop {
             match rl.readline(">> ") {
                 Ok(line) => {
                     let line = line.trim();
                     if line.contains("help") {
-                        // Print help
-                        println!("{}", help);
+                        println!("{}", HELP_DEVICE);
                         rl.add_history_entry(line);
                     } else if line.contains("list") {
                         // List device kinds
@@ -148,22 +180,25 @@ fn configure_devices<'dk>(
                         }
                         rl.add_history_entry(line);
                     } else if line.contains("status") {
-                        // List status of state devices
-                        for (i, dev_opt) in state.iter_dev().enumerate() {
-                            if let Some(dev) = dev_opt {
-                                println!("{}: {}", i, dev.name());
-                            } else {
-                                println!("{}: (unset)", i);
-                            }
-                        }
+                        println!("{}", state);
                         rl.add_history_entry(line);
-                    } else if let Some(groups) = add_pattern.captures(line) {
+                    } else if let Some(groups) = add_i_pattern.captures(line) {
                         // Add device
                         let i = groups.get(1).unwrap().as_str().parse::<usize>().unwrap();
                         let key = groups.get(2).unwrap().as_str();
                         if let Some(kind) = kinds.get(key) {
                             let dev = kind.make();
-                            state.try_set_dev(i, Some(dev))?;
+                            state.set_dev(i, Some(dev))?;
+                        } else {
+                            println!("Error: device kind {} not-found, skipping", key);
+                        }
+                        rl.add_history_entry(line);
+                    } else if let Some(groups) = add_n_pattern.captures(line) {
+                        // Add device to network
+                        let key = groups.get(1).unwrap().as_str();
+                        if let Some(kind) = kinds.get(key) {
+                            let dev = kind.make();
+                            state.dev_network_add(dev);
                         } else {
                             println!("Error: device kind {} not-found, skipping", key);
                         }
@@ -171,7 +206,7 @@ fn configure_devices<'dk>(
                     } else if let Some(groups) = rm_pattern.captures(line) {
                         // Remove device
                         let i = groups.get(1).unwrap().as_str().parse::<usize>().unwrap();
-                        state.try_set_dev(i, None)?;
+                        state.set_dev(i, None)?;
                         rl.add_history_entry(line);
                     } else {
                         println!("Error: unknown command");
@@ -189,15 +224,11 @@ fn run_program(sim_init: ICSimulator, rl: &mut Editor) -> Result<(), ReadlineErr
     let mut sim = sim_init.clone();
     let mut i = 1_usize;
 
-    let help = "    \"EOL\"             - finish
-    \"help\" or \"h\"     - print this message again
-    \"reinit\"          - reinitialize the simulation
-    \"program\"         - display the program
-    \"status\"          - display state details
-    \"<n>\"             - step <n> times
-    \"\"                - step once";
-
-    println!("Running simulation:\n{}\n0: {}", help, format_next_line(&sim));
+    println!(
+        "Running simulation:\n{}\n0: {}",
+        HELP_PROGRAM,
+        format_next_line(&sim)
+    );
 
     loop {
         match rl.readline(">> ") {
@@ -211,7 +242,7 @@ fn run_program(sim_init: ICSimulator, rl: &mut Editor) -> Result<(), ReadlineErr
                     println!("0: {}", format_next_line(&sim));
                     rl.add_history_entry(line);
                 } else if line == "help" || line == "h" {
-                    println!("{}", help);
+                    println!("{}", HELP_PROGRAM);
                     rl.add_history_entry(line);
                 } else if line == "program" {
                     for line in sim.iter_lines() {
@@ -219,7 +250,7 @@ fn run_program(sim_init: ICSimulator, rl: &mut Editor) -> Result<(), ReadlineErr
                     }
                     rl.add_history_entry(line);
                 } else if line == "status" {
-                    println!("{:#?}", sim.state);
+                    println!("{}", sim.state);
                     rl.add_history_entry(line);
                 } else if let Ok(n) = line.parse::<usize>() {
                     for _ in 0..n {
@@ -229,7 +260,7 @@ fn run_program(sim_init: ICSimulator, rl: &mut Editor) -> Result<(), ReadlineErr
                 } else {
                     println!("Error: unknown command");
                 }
-            },
+            }
             Err(ReadlineError::Eof) => return Ok(()),
             Err(e) => Err(e)?,
         }
