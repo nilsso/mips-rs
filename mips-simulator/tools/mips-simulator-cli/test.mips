@@ -2,4 +2,4 @@ alias x r0
 main:
 add x 1 x
 sb -851746783 Setting x
-j main
+blt x 5 main

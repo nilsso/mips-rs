@@ -131,7 +131,12 @@ impl<'dk> ICState<'dk> {
                 Bleal  => {},
                 Blez   => {},
                 Blezal => {},
-                Blt    => {},
+                Blt    => {
+                    let a = args.val(0)?;
+                    let b = args.val(1)?;
+                    let c = args.val(2)?;
+                    jumped = self.jump_helper(c, false, false, a < b)?;
+                },
                 Bltal  => {},
                 Bltz   => {},
                 Bltzal => {},

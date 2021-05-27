@@ -63,9 +63,14 @@ impl<'dk> ICSimulator<'dk> {
         self.get_line(self.state.next_line_index)
     }
 
+    pub fn is_finished(&self) -> bool {
+        self.state.next_line_index >= self.lines.len()
+    }
+
     pub fn step(&mut self) -> ICSimulatorResult {
         let i = self.state.next_line_index;
-        if i >= self.lines.len() {
+
+        if self.is_finished() {
             return Err(ICSimulatorError::LineError(i));
         }
 
@@ -77,7 +82,8 @@ impl<'dk> ICSimulator<'dk> {
         }
 
         let i = self.state.next_line_index;
-        if i >= self.lines.len() {
+
+        if self.is_finished() {
             Ok(StepResult::End(i))
         } else {
             Ok(StepResult::Ok(i))

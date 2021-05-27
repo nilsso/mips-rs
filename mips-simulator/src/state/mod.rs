@@ -12,7 +12,7 @@ use std::num::TryFromIntError;
 use super::device::{Device, DeviceError};
 
 /// Alias kind type.
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum AliasKind {
     MemId(usize),
     DevId(usize),
@@ -30,7 +30,7 @@ impl AliasKind {
     ]);
 }
 
-impl Debug for AliasKind {
+impl Display for AliasKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use AliasKind::*;
         match self {
@@ -39,6 +39,12 @@ impl Debug for AliasKind {
             Label(i) => write!(f, "Label({})", i),
             Def(v) => write!(f, "Def({})", v),
         }
+    }
+}
+
+impl Debug for AliasKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_fmt(format_args!("{}", self))
     }
 }
 
@@ -158,7 +164,7 @@ impl<'dk> ICState<'dk> {
     // ============================================================================================
 
     /// Try to reduce a memory index by a number of indirections.
-    pub(self) fn index_reduce(
+    pub fn index_reduce(
         &self,
         mut i: usize,
         num_indirections: usize,
@@ -170,7 +176,7 @@ impl<'dk> ICState<'dk> {
         Ok(i)
     }
 
-    pub(self) fn arg_reducer<'a, 'b>(&'a self, args: &'b Vec<Arg>) -> ArgReducer<'a, 'b> {
+    pub fn arg_reducer<'a, 'b>(&'a self, args: &'b Vec<Arg>) -> ArgReducer<'a, 'b> {
         ArgReducer { state: self, args }
     }
 
@@ -196,7 +202,7 @@ impl<'dk> ICState<'dk> {
     /// * `relative` - Is the jump index relative?
     /// * `save` - Save the current next line in `ra`?
     /// * `condition` - Execute this jump?
-    pub(self) fn jump_helper(
+    pub fn jump_helper(
         &mut self,
         mut i: f64,
         relative: bool,
@@ -227,7 +233,7 @@ impl<'dk> ICState<'dk> {
     }
 
     /// Try to get an alias.
-    pub(self) fn get_alias(&self, a: &String) -> ICStateResult<&AliasKind> {
+    pub fn get_alias(&self, a: &String) -> ICStateResult<&AliasKind> {
         self.map.get(a).ok_or(ICStateError::AliasUnset(a.into()))
     }
 
@@ -236,14 +242,14 @@ impl<'dk> ICState<'dk> {
     // ============================================================================================
 
     /// Try to get a memory register value reference.
-    pub(self) fn get_mem(&self, i: usize) -> ICStateResult<&f64> {
+    pub fn get_mem(&self, i: usize) -> ICStateResult<&f64> {
         self.mem
             .get(i)
             .ok_or(ICStateError::OutOfBounds(OutOfBounds::Mem(i)))
     }
 
     /// Try to set a memory register value.
-    pub(self) fn set_mem(&mut self, i: usize, v: f64) -> ICStateResult<()> {
+    pub fn set_mem(&mut self, i: usize, v: f64) -> ICStateResult<()> {
         self.mem
             .get_mut(i)
             .ok_or(ICStateError::OutOfBounds(OutOfBounds::Mem(i)))
@@ -251,7 +257,7 @@ impl<'dk> ICState<'dk> {
     }
 
     /// Try to reduce a memory node to a memory `usize` index.
-    pub(self) fn mem_reduce(&self, mem: &Mem) -> ICStateResult<usize> {
+    pub fn mem_reduce(&self, mem: &Mem) -> ICStateResult<usize> {
         match mem {
             Mem::MemAlias(a) => self.get_alias(a)?.mem_id().cloned(),
             &Mem::MemLit(i, num_indirections) => self.index_reduce(i, num_indirections),
@@ -276,7 +282,7 @@ impl<'dk> ICState<'dk> {
     }
 
     /// Try to get a device reference.
-    pub(self) fn get_dev(&self, i: usize) -> ICStateResult<&Device<'dk>> {
+    pub fn get_dev(&self, i: usize) -> ICStateResult<&Device<'dk>> {
         self.dev
             .get(i)
             .and_then(Option::as_ref)
@@ -284,7 +290,7 @@ impl<'dk> ICState<'dk> {
     }
 
     /// Try to get a mutable device reference.
-    pub(self) fn get_dev_mut(&mut self, i: usize) -> ICStateResult<&mut Device<'dk>> {
+    pub fn get_dev_mut(&mut self, i: usize) -> ICStateResult<&mut Device<'dk>> {
         self.dev
             .get_mut(i)
             .and_then(Option::as_mut)
@@ -300,7 +306,7 @@ impl<'dk> ICState<'dk> {
     }
 
     /// Try to reduce a device node to a device `usize` index.
-    pub(self) fn dev_reduce(&self, dev: &Dev) -> ICStateResult<usize> {
+    pub fn dev_reduce(&self, dev: &Dev) -> ICStateResult<usize> {
         match dev {
             Dev::DevAlias(a) => self.get_alias(a)?.dev_id().cloned(),
             &Dev::DevLit(i, num_indirections) => self.index_reduce(i, num_indirections),
@@ -321,7 +327,7 @@ impl<'dk> ICState<'dk> {
     /// * `hash` - Hash of devices to read from
     /// * `var` - Parameter to read
     /// * `mode` - Mode (0: average, 1: sum, 2: min, 3: max)
-    pub fn dev_network_read(&self, hash: i64, var: &String, mode: f64) -> ICStateResult<f64> {
+    pub fn dev_network_read(&self, hash: i64, var: &str, mode: f64) -> ICStateResult<f64> {
         let mode = BatchMode::try_from(mode)?;
         if let Some(devices) = self.network.get(&hash) {
             let vals: Vec<f64> = devices
@@ -332,7 +338,7 @@ impl<'dk> ICState<'dk> {
             let val = match mode {
                 BatchMode::Avg => iter.sum::<f64>() / devices.len() as f64,
                 BatchMode::Sum => iter.sum::<f64>(),
-                BatchMode::Min => iter.fold(f64::NEG_INFINITY, f64::min),
+                BatchMode::Min => iter.fold(f64::INFINITY, f64::min),
                 BatchMode::Max => iter.fold(f64::NEG_INFINITY, f64::max),
             };
             Ok(val)
@@ -360,17 +366,24 @@ impl<'dk> ICState<'dk> {
     // ============================================================================================
 
     /// Try to reduce a value node to an `f64`.
-    pub(self) fn val_reduce(&self, val: &Val) -> ICStateResult<f64> {
+    pub fn val_reduce(&self, val: &Val) -> ICStateResult<f64> {
         match val {
             Val::ValLit(v) => Ok(*v),
-            Val::ValMem(m) => self.mem_reduce(m).and_then(|i| self.get_mem(i)).cloned(),
+            Val::ValMem(m) => match m {
+                Mem::MemAlias(a) => match self.get_alias(a)? {
+                    AliasKind::MemId(i) => self.get_mem(*i).cloned(),
+                    AliasKind::Label(i) => Ok(*i as f64),
+                    AliasKind::Def(v) => Ok(*v),
+                    _ => Err(ICStateError::AliasWrongKind(a.clone())),
+                },
+                Mem::MemLit(_, _) => self.mem_reduce(m).and_then(|i| self.get_mem(i)).cloned(),
+            },
         }
     }
 }
 
 impl<'dk> Display for ICState<'dk> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-
         fn write_dev(indent: &'static str, dev: &Device, f: &mut fmt::Formatter) -> fmt::Result {
             let d_str = dev.to_string();
             let mut iter = d_str.split("\n");
@@ -417,7 +430,21 @@ impl<'dk> Display for ICState<'dk> {
         f.write_str("    ],\n")?;
 
         // Write next line index
-        f.write_fmt(format_args!("    next_line_index: {},\n", self.next_line_index))?;
+        f.write_fmt(format_args!(
+            "    next_line_index: {},\n",
+            self.next_line_index
+        ))?;
+
+        // Write status of map (aliases, labels, defines)
+        f.write_str("    map: {\n")?;
+        let mut iter = self.map.iter();
+        if let Some((k, v)) = iter.next() {
+            f.write_fmt(format_args!("        {}: {}", k, v))?;
+            while let Some((k, v)) = iter.next() {
+                f.write_fmt(format_args!(",\n        {}: {}", k, v))?;
+            }
+        }
+        f.write_str("\n    },\n")?;
 
         fn write_devices(devices: &Vec<Device>, f: &mut fmt::Formatter) -> fmt::Result {
             f.write_str("        [\n")?;
@@ -438,8 +465,7 @@ impl<'dk> Display for ICState<'dk> {
                 write_devices(devices, f)?;
             }
         }
-        for _devices in self.network.values() {
-        }
+        for _devices in self.network.values() {}
         f.write_str("    ]\n}")
     }
 }
