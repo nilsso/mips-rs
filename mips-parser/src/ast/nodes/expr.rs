@@ -17,6 +17,12 @@ use super::{Arg, Func};
 #[derive(Clone, PartialEq, Debug)]
 pub struct Expr(pub Func, pub Vec<Arg>);
 
+impl<'a> Into<(&'a Func, &'a Vec<Arg>)> for &'a Expr {
+    fn into(self) -> (&'a Func, &'a Vec<Arg>) {
+        (&self.0, &self.1)
+    }
+}
+
 impl Node for Expr {
     type Output = Self;
 

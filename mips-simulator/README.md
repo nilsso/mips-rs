@@ -31,78 +31,78 @@ regardless of how the `sp` and `ra` *aliases* are set.
 
 * Implement all the functions:
 
-- [ ] Device IO
-    - [ ] `Bdns`
-    - [ ] `Bdnsal`
-    - [ ] `Bdse`
-    - [ ] `Bdseal`
-    - [ ] `Brdns`
-    - [ ] `Brdse`
-    - [ ] `L`
-    - [ ] `Lb`
-    - [ ] `Lr`
-    - [ ] `Ls`
-    - [ ] `S`
-    - [ ] `Sb`
-- [ ] Flow Control, Branches and Jumps
-    - [ ] `Bap`
-    - [ ] `Bapal`
+- [x] Device IO
+    - [x] `Bdns`
+    - [x] `Bdnsal`
+    - [x] `Bdse`
+    - [x] `Bdseal`
+    - [x] `Brdns`
+    - [x] `Brdse`
+    - [x] `L`
+    - [x] `Lb`
+    - [x] `Lr`
+    - [x] `Ls`
+    - [x] `S`
+    - [x] `Sb`
+- [x] Flow Control, Branches and Jumps
+    - [x] `Bap`
+    - [x] `Bapal`
     - [ ] `Bapz`
     - [ ] `Bapzal`
-    - [ ] `Beq`
-    - [ ] `Beqal`
-    - [ ] `Beqz`
-    - [ ] `Beqzal`
-    - [ ] `Bge`
-    - [ ] `Bgeal`
-    - [ ] `Bgez`
-    - [ ] `Bgezal`
-    - [ ] `Bgt`
-    - [ ] `Bgtal`
-    - [ ] `Bgtz`
-    - [ ] `Bgtzal`
-    - [ ] `Ble`
-    - [ ] `Bleal`
-    - [ ] `Blez`
-    - [ ] `Blezal`
-    - [ ] `Blt`
-    - [ ] `Bltal`
-    - [ ] `Bltz`
-    - [ ] `Bltzal`
-    - [ ] `Bna`
-    - [ ] `Bnaal`
-    - [ ] `Bnaz`
-    - [ ] `Bnazal`
-    - [ ] `Bne`
-    - [ ] `Bneal`
-    - [ ] `Bnez`
-    - [ ] `Bnezal`
-    - [ ] `Brap`
+    - [x] `Beq`
+    - [x] `Beqal`
+    - [x] `Beqz`
+    - [x] `Beqzal`
+    - [x] `Bge`
+    - [x] `Bgeal`
+    - [x] `Bgez`
+    - [x] `Bgezal`
+    - [x] `Bgt`
+    - [x] `Bgtal`
+    - [x] `Bgtz`
+    - [x] `Bgtzal`
+    - [x] `Ble`
+    - [x] `Bleal`
+    - [x] `Blez`
+    - [x] `Blezal`
+    - [x] `Blt`
+    - [x] `Bltal`
+    - [x] `Bltz`
+    - [x] `Bltzal`
+    - [x] `Bna`
+    - [x] `Bnaal`
+    - [x] `Bnaz`
+    - [x] `Bnazal`
+    - [x] `Bne`
+    - [x] `Bneal`
+    - [x] `Bnez`
+    - [x] `Bnezal`
+    - [x] `Brap`
     - [ ] `Brapz`
-    - [ ] `Breq`
-    - [ ] `Breqz`
-    - [ ] `Brge`
-    - [ ] `Brgez`
-    - [ ] `Brgt`
-    - [ ] `Brgtz`
-    - [ ] `Brle`
-    - [ ] `Brlez`
-    - [ ] `Brlt`
-    - [ ] `Brltz`
-    - [ ] `Brna`
-    - [ ] `Brnaz`
-    - [ ] `Brne`
-    - [ ] `Brnez`
+    - [x] `Breq`
+    - [x] `Breqz`
+    - [x] `Brge`
+    - [x] `Brgez`
+    - [x] `Brgt`
+    - [x] `Brgtz`
+    - [x] `Brle`
+    - [x] `Brlez`
+    - [x] `Brlt`
+    - [x] `Brltz`
+    - [x] `Brna`
+    - [x] `Brnaz`
+    - [x] `Brne`
+    - [x] `Brnez`
     - [x] `J`
-    - [ ] `Jal`
-    - [ ] `Jr`
+    - [x] `Jal`
+    - [x] `Jr`
 - [ ] Variable selection
     - [ ] `Sap`
     - [ ] `Sapz`
     - [ ] `Sdns`
     - [ ] `Sdse`
     - [ ] `Select`
-    - [ ] `Seq`
+    - [x] `Seq`
     - [ ] `Seqz`
     - [ ] `Sge`
     - [ ] `Sgez`
@@ -119,7 +119,7 @@ regardless of how the `sp` and `ra` *aliases* are set.
 - [ ] Mathematical Operations
     - [ ] `Abs`
     - [ ] `Acos`
-    - [ ] `Add`
+    - [x] `Add`
     - [ ] `Asin`
     - [ ] `Atan`
     - [ ] `Ceil`
@@ -144,16 +144,16 @@ regardless of how the `sp` and `ra` *aliases* are set.
     - [x] `Nor`
     - [x] `Or`
     - [x] `Xor`
-- [ ] Stack
-    - [ ] `Peek`
-    - [ ] `Pop`
-    - [ ] `Push`
-- [ ] Misc
+- [x] Stack
+    - [x] `Peek`
+    - [x] `Pop`
+    - [x] `Push`
+- [x] Misc
     - [x] `Alias`
-    - [ ] `Define`
-    - [ ] `Hcf`
+    - [x] `Define`
+    - [x] `Hcf`
     - [x] `Move`
-    - [ ] `Sleep`
-    - [ ] `Yield`
-- [ ] Label
-    - [ ] `Label`
+    - [x] `Sleep`
+    - [x] `Yield`
+- [x] Label
+    - [x] `Label`

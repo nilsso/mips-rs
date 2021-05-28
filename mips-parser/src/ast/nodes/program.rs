@@ -7,7 +7,7 @@ use pest::iterators::Pair;
 use crate::ast::{AstError, AstResult, Node};
 use crate::Rule;
 
-use super::{Expr, Line};
+use super::{Expr, line::Line};
 
 /// Program node.
 #[derive(Clone, PartialEq, Debug)]

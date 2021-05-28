@@ -10,6 +10,7 @@ serde = { version = "*", features = ["derive"] }
 ron = "*"
 maplit = "1.0.2"
 serde_json = "*"
+itertools = "0.9.0"
 #thiserror = "1.0.20"
 
 [dev-dependencies]

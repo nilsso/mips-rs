@@ -109,7 +109,10 @@ fn get_program(matches: &ArgMatches, rl: &mut Editor) -> Result<Program, CliErro
             match source {
                 Ok(source) => {
                     match Expr::try_from_str(&source) {
-                        Ok(expr) => program.push(expr),
+                        Ok(expr) => {
+                            rl.add_history_entry(source);
+                            program.push(expr)
+                        }
                         _ => println!("Error: Parse error"),
                     };
                 }
@@ -123,8 +126,8 @@ fn get_program(matches: &ArgMatches, rl: &mut Editor) -> Result<Program, CliErro
 }
 
 // Configure state devices, either via a configuration file or through standard input.
-fn configure_devices<'dk>(
-    state: &mut ICState<'dk>,
+fn configure_devices<'dk, const STACKSIZE: usize>(
+    state: &mut ICState<'dk, STACKSIZE>,
     kinds: &'dk DeviceKinds,
     conf: Option<&str>,
     rl: &mut Editor,
@@ -220,7 +223,10 @@ fn configure_devices<'dk>(
     Ok(())
 }
 
-fn run_program(sim_init: ICSimulator, rl: &mut Editor) -> Result<(), ReadlineError> {
+fn run_program<const STACKSIZE: usize>(
+    sim_init: ICSimulator<STACKSIZE>,
+    rl: &mut Editor,
+) -> Result<(), ReadlineError> {
     let mut sim = sim_init.clone();
     let mut i = 1_usize;
 
@@ -267,11 +273,11 @@ fn run_program(sim_init: ICSimulator, rl: &mut Editor) -> Result<(), ReadlineErr
     }
 }
 
-fn format_next_line(sim: &ICSimulator) -> String {
+fn format_next_line<const STACKSIZE: usize>(sim: &ICSimulator<STACKSIZE>) -> String {
     sim.next_line().map(Line::to_string).unwrap_or("END".into())
 }
 
-fn step(i: &mut usize, sim: &mut ICSimulator) {
+fn step<const STACKSIZE: usize>(i: &mut usize, sim: &mut ICSimulator<STACKSIZE>) {
     let l1 = format_next_line(&sim);
     sim.step().ok();
     let l2 = format_next_line(&sim);

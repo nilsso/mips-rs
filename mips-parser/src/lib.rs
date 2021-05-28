@@ -35,7 +35,7 @@ pub enum MipsParserError {
 
 /// All-in-one module.
 pub mod prelude {
-    pub use crate::ast::nodes::{Arg, Dev, Expr, Func, Mem, Program, Val, Line};
+    pub use crate::ast::nodes::{Arg, Dev, Expr, Func, Mem, Program, Val};
     pub use crate::ast::{Node, AstError, FirstInner};
     pub use crate::{MipsParser, MipsParserError, Rule};
     pub use pest::{iterators::Pair, Parser};

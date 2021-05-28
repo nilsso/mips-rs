@@ -1,13 +1,10 @@
 #![allow(unused_macros)]
-use std::collections::HashMap;
 use std::fs::File;
 
 use ron::de::from_reader;
 
 use mips_parser::ast::{nodes::Program, Node};
 use mips_simulator::prelude::*;
-
-type DeviceKinds = HashMap<String, DeviceKind>;
 
 macro_rules! setup {
     ($s:ident) => {{
@@ -27,7 +24,7 @@ macro_rules! run_until_finished {
     ($sim:ident) => {{
         let mut i = 0;
         while !$sim.is_finished() {
-            assert!($sim.step().is_ok());
+            $sim.step().unwrap();
             i += 1;
             if i >= 1000 {
                 panic!("Infinite loop?");

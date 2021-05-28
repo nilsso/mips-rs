@@ -13,6 +13,7 @@ use clap::{load_yaml, App, ArgMatches};
 use pest::{error::Error as PestError, iterators::Pairs};
 
 use mips_parser::prelude::*;
+use mips_parser::ast::nodes::Line;
 
 #[derive(Debug)]
 enum CliError {

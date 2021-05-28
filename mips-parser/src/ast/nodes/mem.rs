@@ -1,15 +1,28 @@
 use std::{fmt, fmt::Display};
+use std::convert::TryFrom;
 
 use pest::iterators::Pair;
 
 use crate::Rule;
 use crate::ast::{Node, pair_to_int, FirstInner, AstError, AstResult};
+use crate::prelude::Arg;
 
 /// Memory register node.
 #[derive(Clone, PartialEq, Debug)]
 pub enum Mem {
     MemLit(usize, usize),
     MemAlias(String),
+}
+
+impl TryFrom<&Arg> for Mem {
+    type Error = AstError;
+
+    fn try_from(arg: &Arg) -> Result<Mem, AstError> {
+        match arg {
+            Arg::ArgMem(m) => Ok(m.clone()),
+            _ => Err(AstError::WrongArg("".into())),
+        }
+    }
 }
 
 impl Node for Mem {
