@@ -71,25 +71,6 @@ pub struct Device<'dk> {
     pub params: Params,
 }
 
-impl<'dk> Display for Device<'dk> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_fmt(format_args!("{} {{\n", self.kind.name))?;
-        for (k, v) in self.params.iter() {
-            f.write_fmt(format_args!(
-                "    {}: {} ({})\n",
-                k,
-                v.read_internal(),
-                match v {
-                    Param::Read(_) => "R",
-                    Param::Write(_) => "W",
-                    Param::ReadWrite(_) => "RW",
-                }
-            ))?;
-        }
-        f.write_str("}")
-    }
-}
-
 impl<'dk> Device<'dk> {
     pub fn name(&self) -> &'dk String {
         &self.kind.name
@@ -149,5 +130,24 @@ impl<'dk> Device<'dk> {
     {
         self.get_mut(&key.into())
             .map(|p| p.write_internal(val.into()))
+    }
+}
+
+impl<'dk> Display for Device<'dk> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_fmt(format_args!("{} {{\n", self.kind.name))?;
+        for (k, v) in self.params.iter() {
+            f.write_fmt(format_args!(
+                "    {}: {} ({})\n",
+                k,
+                v.read_internal(),
+                match v {
+                    Param::Read(_) => "R",
+                    Param::Write(_) => "W",
+                    Param::ReadWrite(_) => "RW",
+                }
+            ))?;
+        }
+        f.write_str("}")
     }
 }

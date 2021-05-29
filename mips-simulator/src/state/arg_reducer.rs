@@ -1,42 +1,47 @@
 use std::convert::TryFrom;
 
-use mips_parser::prelude::{AstError, Arg};
-use crate::state::{AliasKind, ICState, ICStateError, ICStateResult};
+use crate::state::{AliasKind, ICState, ICStateError, ICStateResult, DevId};
+use mips_parser::prelude::{Arg, AstError};
 
 /// Argument reducer helper type.
 #[derive(Debug)]
-pub struct ArgReducer<'args, 'dk, const STACKSIZE: usize> {
-    state: &'dk ICState<'dk, STACKSIZE>,
+pub struct ArgReducer<'args, 'dk, const MS: usize, const DS: usize, const SS: usize> {
+    state: &'dk ICState<'dk, MS, DS, SS>,
     args: &'args Vec<Arg>,
 }
 
-impl<'args, 'dk, const STACKSIZE: usize> ArgReducer<'args, 'dk, STACKSIZE> {
-    pub fn new(state: &'dk ICState<'dk, STACKSIZE>, args: &'args Vec<Arg>) -> Self {
+impl<'args, 'dk, const MS: usize, const DS: usize, const SS: usize>
+    ArgReducer<'args, 'dk, MS, DS, SS>
+{
+    pub fn new(state: &'dk ICState<'dk, MS, DS, SS>, args: &'args Vec<Arg>) -> Self {
         Self { state, args }
     }
 }
 
 /// Trait for attempting to reduce an argument into a type.
-pub trait TryReduce<'args, 'dk, const STACKSIZE: usize>
+pub trait TryReduce<'args, 'dk, const MS: usize, const DS: usize, const SS: usize>
 where
-    Self: Sized
+    Self: Sized,
 {
-    fn try_reduce(arg: &Arg, reducer: &ArgReducer<'args, 'dk, STACKSIZE>) -> ICStateResult<Self>;
+    fn try_reduce(arg: &Arg, reducer: &ArgReducer<'args, 'dk, MS, DS, SS>) -> ICStateResult<Self>;
 }
 
 // Implement TryFrom for tuple of below helper types from ArgReducer
 macro_rules! impl_tuple_try_from_reducer {
     ($( [ ($( $L:tt ),*), ($( $l:tt ),*), ($( $n:literal ),*), $N:literal ] ),*$(,)*) => {
         $(
-            impl<'args, 'dk, $($L),*, const STACKSIZE: usize> TryFrom<&ArgReducer<'args, 'dk, STACKSIZE>> for ($($L),*,)
+            impl<'args, 'dk, $($L),*, const MS: usize, const DS: usize, const SS: usize>
+                TryFrom<&ArgReducer<'args, 'dk, MS, DS, SS>> for ($($L),*,)
             where
                 $(
-                    $L: TryReduce<'args, 'dk, STACKSIZE>, 
+                    $L: TryReduce<'args, 'dk, MS, DS, SS>,
                 )*
             {
                 type Error = ICStateError;
 
-                fn try_from(reducer: &ArgReducer<'args, 'dk, STACKSIZE>) -> ICStateResult<($($L),*,)> {
+                fn try_from(
+                    reducer: &ArgReducer<'args, 'dk, MS, DS, SS>
+                ) -> ICStateResult<($($L),*,)> {
                     let args = reducer.args;
                     if args.len() == $N {
                         $( let $l = <$L>::try_reduce(&args[$n], &reducer)?;)*
@@ -52,10 +57,10 @@ macro_rules! impl_tuple_try_from_reducer {
 }
 
 impl_tuple_try_from_reducer!(
-    [(A),             (a),             (0),             1],
-    [(A, B),          (a, b),          (0, 1),          2],
-    [(A, B, C),       (a, b, c),       (0, 1, 2),       3],
-    [(A, B, C, D),    (a, b, c, d),    (0, 1, 2, 3),    4],
+    [(A), (a), (0), 1],
+    [(A, B), (a, b), (0, 1), 2],
+    [(A, B, C), (a, b, c), (0, 1, 2), 3],
+    [(A, B, C, D), (a, b, c, d), (0, 1, 2, 3), 4],
     [(A, B, C, D, E), (a, b, c, d, e), (0, 1, 2, 3, 4), 5]
 );
 
@@ -65,8 +70,10 @@ impl_tuple_try_from_reducer!(
 
 pub struct M(pub usize);
 
-impl<'args, 'dk, const STACKSIZE: usize> TryReduce<'args, 'dk, STACKSIZE> for M {
-    fn try_reduce(arg: &Arg, reducer: &ArgReducer<'args, 'dk, STACKSIZE>) -> ICStateResult<M> {
+impl<'args, 'dk, const MS: usize, const DS: usize, const SS: usize>
+    TryReduce<'args, 'dk, MS, DS, SS> for M
+{
+    fn try_reduce(arg: &Arg, reducer: &ArgReducer<'args, 'dk, MS, DS, SS>) -> ICStateResult<M> {
         let m = arg.mem()?;
         Ok(M(reducer.state.mem_reduce(m)?))
     }
@@ -76,10 +83,12 @@ impl<'args, 'dk, const STACKSIZE: usize> TryReduce<'args, 'dk, STACKSIZE> for M 
 // Device reducer helper type
 // ================================================================================================
 
-pub struct D(pub usize);
+pub struct D(pub DevId);
 
-impl<'args, 'dk, const STACKSIZE: usize> TryReduce<'args, 'dk, STACKSIZE> for D {
-    fn try_reduce(arg: &Arg, reducer: &ArgReducer<'args, 'dk, STACKSIZE>) -> ICStateResult<D> {
+impl<'args, 'dk, const MS: usize, const DS: usize, const SS: usize>
+    TryReduce<'args, 'dk, MS, DS, SS> for D
+{
+    fn try_reduce(arg: &Arg, reducer: &ArgReducer<'args, 'dk, MS, DS, SS>) -> ICStateResult<D> {
         let d = arg.dev()?;
         Ok(D(reducer.state.dev_reduce(d)?))
     }
@@ -91,18 +100,23 @@ impl<'args, 'dk, const STACKSIZE: usize> TryReduce<'args, 'dk, STACKSIZE> for D 
 
 pub struct R(pub AliasKind);
 
-impl<'args, 'dk, const STACKSIZE: usize> TryReduce<'args, 'dk, STACKSIZE> for R {
-    fn try_reduce(arg: &Arg, reducer: &ArgReducer<'args, 'dk, STACKSIZE>) -> ICStateResult<R> {
+impl<'args, 'dk, const MS: usize, const DS: usize, const SS: usize>
+    TryReduce<'args, 'dk, MS, DS, SS> for R
+{
+    fn try_reduce(arg: &Arg, reducer: &ArgReducer<'args, 'dk, MS, DS, SS>) -> ICStateResult<R> {
         match arg {
             Arg::ArgMem(m) => {
                 let i = reducer.state.mem_reduce(m)?;
                 Ok(R(AliasKind::MemId(i as usize)))
             }
             Arg::ArgDev(d) => {
-                let i = reducer.state.dev_reduce(d)?;
-                Ok(R(AliasKind::DevId(i as usize)))
+                let di = reducer.state.dev_reduce(d)?;
+                Ok(R(AliasKind::DevId(di)))
             }
-            _ => Err(AstError::WrongArg(format!("Expected ArgMem or ArgDev, found {}", arg)))?,
+            _ => Err(AstError::WrongArg(format!(
+                "Expected ArgMem or ArgDev, found {}",
+                arg
+            )))?,
         }
     }
 }
@@ -113,8 +127,10 @@ impl<'args, 'dk, const STACKSIZE: usize> TryReduce<'args, 'dk, STACKSIZE> for R 
 
 pub struct V(pub f64);
 
-impl<'args, 'dk, const STACKSIZE: usize> TryReduce<'args, 'dk, STACKSIZE> for V {
-    fn try_reduce(arg: &Arg, reducer: &ArgReducer<'args, 'dk, STACKSIZE>) -> ICStateResult<V> {
+impl<'args, 'dk, const MS: usize, const DS: usize, const SS: usize>
+    TryReduce<'args, 'dk, MS, DS, SS> for V
+{
+    fn try_reduce(arg: &Arg, reducer: &ArgReducer<'args, 'dk, MS, DS, SS>) -> ICStateResult<V> {
         let v = arg.val()?;
         Ok(V(reducer.state.val_reduce(v)?))
     }
@@ -126,8 +142,10 @@ impl<'args, 'dk, const STACKSIZE: usize> TryReduce<'args, 'dk, STACKSIZE> for V 
 
 pub struct T(pub String);
 
-impl<'args, 'dk, const STACKSIZE: usize> TryReduce<'args, 'dk, STACKSIZE> for T {
-    fn try_reduce(arg: &Arg, _reducer: &ArgReducer<'args, 'dk, STACKSIZE>) -> ICStateResult<T> {
+impl<'args, 'dk, const MS: usize, const DS: usize, const SS: usize>
+    TryReduce<'args, 'dk, MS, DS, SS> for T
+{
+    fn try_reduce(arg: &Arg, _reducer: &ArgReducer<'args, 'dk, MS, DS, SS>) -> ICStateResult<T> {
         Ok(T(arg.token().cloned()?))
     }
 }

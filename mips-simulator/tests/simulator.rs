@@ -69,7 +69,7 @@ blt x 5 main
     let read = |mode| sim.state.dev_network_read(LOGIC_DATA, &"Setting", mode);
 
     // Should be on the 6th line (a.k.a. index 5)
-    assert_eq!(sim.state.next_line_index, 5);
+    assert_eq!(sim.next_line_index(), 5);
     // x should point directly to r2
     assert_alias!(sim.state, "x", AliasKind::MemId(2));
     // x (r0) should be 5

@@ -19,142 +19,7 @@
 //! regardless of how the `sp` and `ra` *aliases* are set.
 //!
 //! ### TODO
-//! - Implement devices and add the `db` self device alias.
-//! * Implement `DeviceKind` and `Device` structs, along with RON parsing to populate
-//!     stock Stationeers device kinds.
-//! * Consider adding error kind for wrong number of arguments.
-//!     Not needed when using `mips_parser` to construct the AST since the parser dinstinguishes
-//!     the number of args from too few or too many,
-//!     but absolutely needed for manual expression constructions.
-//!
-//! * Implement all the functions:
-//!
-//! - [x] Device IO
-//!     - [x] `Bdns`
-//!     - [x] `Bdnsal`
-//!     - [x] `Bdse`
-//!     - [x] `Bdseal`
-//!     - [x] `Brdns`
-//!     - [x] `Brdse`
-//!     - [x] `L`
-//!     - [x] `Lb`
-//!     - [x] `Lr`
-//!     - [x] `Ls`
-//!     - [x] `S`
-//!     - [x] `Sb`
-//! - [x] Flow Control, Branches and Jumps
-//!     - [x] `Bap`
-//!     - [x] `Bapal`
-//!     - [ ] `Bapz`
-//!     - [ ] `Bapzal`
-//!     - [x] `Beq`
-//!     - [x] `Beqal`
-//!     - [x] `Beqz`
-//!     - [x] `Beqzal`
-//!     - [x] `Bge`
-//!     - [x] `Bgeal`
-//!     - [x] `Bgez`
-//!     - [x] `Bgezal`
-//!     - [x] `Bgt`
-//!     - [x] `Bgtal`
-//!     - [x] `Bgtz`
-//!     - [x] `Bgtzal`
-//!     - [x] `Ble`
-//!     - [x] `Bleal`
-//!     - [x] `Blez`
-//!     - [x] `Blezal`
-//!     - [x] `Blt`
-//!     - [x] `Bltal`
-//!     - [x] `Bltz`
-//!     - [x] `Bltzal`
-//!     - [x] `Bna`
-//!     - [x] `Bnaal`
-//!     - [x] `Bnaz`
-//!     - [x] `Bnazal`
-//!     - [x] `Bne`
-//!     - [x] `Bneal`
-//!     - [x] `Bnez`
-//!     - [x] `Bnezal`
-//!     - [x] `Brap`
-//!     - [ ] `Brapz`
-//!     - [x] `Breq`
-//!     - [x] `Breqz`
-//!     - [x] `Brge`
-//!     - [x] `Brgez`
-//!     - [x] `Brgt`
-//!     - [x] `Brgtz`
-//!     - [x] `Brle`
-//!     - [x] `Brlez`
-//!     - [x] `Brlt`
-//!     - [x] `Brltz`
-//!     - [x] `Brna`
-//!     - [x] `Brnaz`
-//!     - [x] `Brne`
-//!     - [x] `Brnez`
-//!     - [x] `J`
-//!     - [x] `Jal`
-//!     - [x] `Jr`
-//! - [ ] Variable selection
-//!     - [ ] `Sap`
-//!     - [ ] `Sapz`
-//!     - [ ] `Sdns`
-//!     - [ ] `Sdse`
-//!     - [ ] `Select`
-//!     - [x] `Seq`
-//!     - [ ] `Seqz`
-//!     - [ ] `Sge`
-//!     - [ ] `Sgez`
-//!     - [ ] `Sgt`
-//!     - [ ] `Sgtz`
-//!     - [ ] `Sle`
-//!     - [ ] `Slez`
-//!     - [ ] `Slt`
-//!     - [ ] `Sltz`
-//!     - [ ] `Sna`
-//!     - [ ] `Snaz`
-//!     - [ ] `Sne`
-//!     - [ ] `Snez`
-//! - [ ] Mathematical Operations
-//!     - [ ] `Abs`
-//!     - [ ] `Acos`
-//!     - [x] `Add`
-//!     - [ ] `Asin`
-//!     - [ ] `Atan`
-//!     - [ ] `Ceil`
-//!     - [ ] `Cos`
-//!     - [ ] `Div`
-//!     - [ ] `Exp`
-//!     - [ ] `Floor`
-//!     - [ ] `Log`
-//!     - [ ] `Max`
-//!     - [ ] `Min`
-//!     - [ ] `Mod`
-//!     - [ ] `Mul`
-//!     - [ ] `Rand`
-//!     - [ ] `Round`
-//!     - [ ] `Sin`
-//!     - [ ] `Sqrt`
-//!     - [ ] `Sub`
-//!     - [ ] `Tan`
-//!     - [ ] `Trunc`
-//! - [x] Logic
-//!     - [x] `And`
-//!     - [x] `Nor`
-//!     - [x] `Or`
-//!     - [x] `Xor`
-//! - [x] Stack
-//!     - [x] `Peek`
-//!     - [x] `Pop`
-//!     - [x] `Push`
-//! - [x] Misc
-//!     - [x] `Alias`
-//!     - [x] `Define`
-//!     - [x] `Hcf`
-//!     - [x] `Move`
-//!     - [x] `Sleep`
-//!     - [x] `Yield`
-//! - [x] Label
-//!     - [x] `Label`
+//! - Check how the game handles domain errors on math functions
 #![feature(bool_to_option)]
 #![feature(result_cloned)]
 #![feature(result_flattening)]
@@ -181,19 +46,43 @@ impl Display for Line {
     }
 }
 
-pub mod state;
-pub mod simulator;
 pub mod device;
+pub mod simulator;
+pub mod state;
+
+use device::DeviceKinds;
+use state::{AliasKind, ICState};
+
+pub const MEM_SIZE: usize = 18;
+pub const DEV_SIZE: usize = 6;
+pub const STACK_SIZE: usize = 512;
+pub const HOUSING: &'static str = "CircuitHousing";
+
+/// The default Stationeers
+pub type ICStateDefault<'dk> = ICState<'dk, MEM_SIZE, DEV_SIZE, STACK_SIZE>;
+
+impl<'dk> Default for ICState<'dk, 18, 6, 512> {
+    /// New Stationeers default IC state (without the self device set).
+    fn default() -> Self {
+        Self::new()
+            .with_alias("sp", AliasKind::MemId(16))
+            .with_alias("ra", AliasKind::MemId(17))
+            .with_alias("db", AliasKind::DevSelf)
+    }
+}
+
+/// New Stationeers default IC state with self device `"CircuitHousing"`.
+///
+/// Panics if `dev_kinds` did not contain a `"CircuitHousing"` key.
+pub fn stationeers_ic(dev_kinds: &DeviceKinds) -> ICState<18, 6, 512> {
+    let housing = dev_kinds[HOUSING].make();
+    ICState::default().with_dev_self(housing)
+}
 
 /// All-in-one module.
 pub mod prelude {
-    pub use crate::Line;
-    pub use crate::state::{ICStateError, AliasKind, ICState};
-    pub use crate::simulator::{ICSimulator, ICSimulatorError};
     pub use crate::device::{Device, DeviceKind, DeviceKinds};
+    pub use crate::simulator::{ICSimulator, ICSimulatorError};
+    pub use crate::state::{AliasKind, DevId, ICState, ICStateError};
+    pub use crate::{stationeers_ic, ICStateDefault, Line};
 }
-
-// For documentation links;
-#[allow(unused_imports)]
-use prelude::*;
-

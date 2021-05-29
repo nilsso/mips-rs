@@ -15,7 +15,7 @@ use ron::{de::from_reader, Error as RonError};
 use rustyline::error::ReadlineError;
 
 use mips_parser::prelude::{Expr, MipsParserError, Node, Program};
-use mips_simulator::prelude::{DeviceKind, ICSimulator, ICState, ICStateError, Line};
+use mips_simulator::prelude::{stationeers_ic, DevId, DeviceKind, ICSimulator, ICState, ICStateError, Line};
 use util::impl_from_error;
 
 type Editor = rustyline::Editor<()>;
@@ -82,7 +82,7 @@ fn main() -> Result<(), CliError> {
     // Get program
     let program = get_program(&matches, &mut rl)?;
 
-    let mut state = ICState::default();
+    let mut state = stationeers_ic(&kinds);
 
     // Configure devices
     configure_devices(&mut state, &kinds, matches.value_of("device-conf"), &mut rl)?;
@@ -126,8 +126,8 @@ fn get_program(matches: &ArgMatches, rl: &mut Editor) -> Result<Program, CliErro
 }
 
 // Configure state devices, either via a configuration file or through standard input.
-fn configure_devices<'dk, const STACKSIZE: usize>(
-    state: &mut ICState<'dk, STACKSIZE>,
+fn configure_devices<'dk, const MS: usize, const DS: usize, const SS: usize>(
+    state: &mut ICState<'dk, MS, DS, SS>,
     kinds: &'dk DeviceKinds,
     conf: Option<&str>,
     rl: &mut Editor,
@@ -156,7 +156,7 @@ fn configure_devices<'dk, const STACKSIZE: usize>(
                 let key = groups.get(2).unwrap().as_str();
                 if let Some(kind) = kinds.get(key) {
                     let dev = kind.make();
-                    state.set_dev(i, Some(dev))?;
+                    state.set_dev(DevId::DevBuf(i), Some(dev))?;
                 } else {
                     println!("Error: device kind {} not-found, skipping", key);
                 }
@@ -191,7 +191,7 @@ fn configure_devices<'dk, const STACKSIZE: usize>(
                         let key = groups.get(2).unwrap().as_str();
                         if let Some(kind) = kinds.get(key) {
                             let dev = kind.make();
-                            state.set_dev(i, Some(dev))?;
+                            state.set_dev(DevId::DevBuf(i), Some(dev))?;
                         } else {
                             println!("Error: device kind {} not-found, skipping", key);
                         }
@@ -209,7 +209,7 @@ fn configure_devices<'dk, const STACKSIZE: usize>(
                     } else if let Some(groups) = rm_pattern.captures(line) {
                         // Remove device
                         let i = groups.get(1).unwrap().as_str().parse::<usize>().unwrap();
-                        state.set_dev(i, None)?;
+                        state.set_dev(DevId::DevBuf(i), None)?;
                         rl.add_history_entry(line);
                     } else {
                         println!("Error: unknown command");
@@ -223,8 +223,8 @@ fn configure_devices<'dk, const STACKSIZE: usize>(
     Ok(())
 }
 
-fn run_program<const STACKSIZE: usize>(
-    sim_init: ICSimulator<STACKSIZE>,
+fn run_program<const MS: usize, const DS: usize, const SS: usize>(
+    sim_init: ICSimulator<MS, DS, SS>,
     rl: &mut Editor,
 ) -> Result<(), ReadlineError> {
     let mut sim = sim_init.clone();
@@ -273,11 +273,16 @@ fn run_program<const STACKSIZE: usize>(
     }
 }
 
-fn format_next_line<const STACKSIZE: usize>(sim: &ICSimulator<STACKSIZE>) -> String {
+fn format_next_line<const MS: usize, const DS: usize, const SS: usize>(
+    sim: &ICSimulator<MS, DS, SS>,
+) -> String {
     sim.next_line().map(Line::to_string).unwrap_or("END".into())
 }
 
-fn step<const STACKSIZE: usize>(i: &mut usize, sim: &mut ICSimulator<STACKSIZE>) {
+fn step<const MS: usize, const DS: usize, const SS: usize>(
+    i: &mut usize,
+    sim: &mut ICSimulator<MS, DS, SS>,
+) {
     let l1 = format_next_line(&sim);
     sim.step().ok();
     let l2 = format_next_line(&sim);

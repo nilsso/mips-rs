@@ -1,8 +1,8 @@
 //! IC10 simulator.
 use mips_parser::prelude::*;
 
+use crate::state::{ExecResult, ICState, ICStateError};
 use crate::Line;
-use crate::state::{ICState, ICStateError, ExecResult};
 
 #[derive(Debug)]
 pub enum ICSimulatorError {
@@ -28,13 +28,15 @@ impl StepResult {
 pub type ICSimulatorResult = Result<StepResult, ICSimulatorError>;
 
 #[derive(Clone, Debug)]
-pub struct ICSimulator<'dk, const STACKSIZE: usize> {
-    pub state: ICState<'dk, STACKSIZE>,
+pub struct ICSimulator<'dk, const MS: usize, const DS: usize, const SS: usize> {
+    pub state: ICState<'dk, MS, DS, SS>,
     pub lines: Vec<Line>,
 }
 
-impl<'dk, const STACKSIZE: usize> ICSimulator<'dk, STACKSIZE> {
-    pub fn new(state: ICState<'dk, STACKSIZE>, program: Program) -> Self {
+impl<'dk, const MS: usize, const DS: usize, const SS: usize>
+    ICSimulator<'dk, MS, DS, SS>
+{
+    pub fn new(state: ICState<'dk, MS, DS, SS>, program: Program) -> Self {
         let mut lines = Vec::new();
         for (i, expr) in program.into_iter() {
             while lines.len() < i {
@@ -83,9 +85,9 @@ impl<'dk, const STACKSIZE: usize> ICSimulator<'dk, STACKSIZE> {
                 if !jumped {
                     self.state.next_line_index += 1;
                 }
-            },
-            ExecResult::Sleep(_) => {},
-            ExecResult::Yield => {},
+            }
+            ExecResult::Sleep(_) => {}
+            ExecResult::Yield => {}
         }
 
         let i = self.state.next_line_index;
