@@ -20,10 +20,10 @@
 //!
 //! ### TODO
 //! - Check how the game handles domain errors on math functions
+//! - Work on constant values (e.g. loading device kinds -> their hashes)
 #![feature(bool_to_option)]
 #![feature(result_cloned)]
 #![feature(result_flattening)]
-#![feature(map_into_keys_values)]
 #![feature(int_error_matching)]
 
 use std::{fmt, fmt::Display};
@@ -49,40 +49,33 @@ impl Display for Line {
 pub mod device;
 pub mod simulator;
 pub mod state;
+pub mod test_utils;
+pub mod watcher;
 
-use device::DeviceKinds;
+use device::Device;
 use state::{AliasKind, ICState};
 
 pub const MEM_SIZE: usize = 18;
 pub const DEV_SIZE: usize = 6;
 pub const STACK_SIZE: usize = 512;
-pub const HOUSING: &'static str = "CircuitHousing";
 
-/// The default Stationeers
-pub type ICStateDefault<'dk> = ICState<'dk, MEM_SIZE, DEV_SIZE, STACK_SIZE>;
-
-impl<'dk> Default for ICState<'dk, 18, 6, 512> {
+impl Default for ICState<MEM_SIZE, DEV_SIZE, STACK_SIZE> {
     /// New Stationeers default IC state (without the self device set).
     fn default() -> Self {
         Self::new()
-            .with_alias("sp", AliasKind::MemId(16))
-            .with_alias("ra", AliasKind::MemId(17))
+            .with_alias("sp", AliasKind::MemId(MEM_SIZE - 2))
+            .with_alias("ra", AliasKind::MemId(MEM_SIZE - 1))
             .with_alias("db", AliasKind::DevSelf)
+            .with_dev_self(Device::circuit_housing())
     }
-}
-
-/// New Stationeers default IC state with self device `"CircuitHousing"`.
-///
-/// Panics if `dev_kinds` did not contain a `"CircuitHousing"` key.
-pub fn stationeers_ic(dev_kinds: &DeviceKinds) -> ICState<18, 6, 512> {
-    let housing = dev_kinds[HOUSING].make();
-    ICState::default().with_dev_self(housing)
 }
 
 /// All-in-one module.
 pub mod prelude {
     pub use crate::device::{Device, DeviceKind, DeviceKinds};
-    pub use crate::simulator::{ICSimulator, ICSimulatorError};
+    pub use crate::simulator::{ICSimulator, ICSimulatorError, ICSimulatorDefault};
     pub use crate::state::{AliasKind, DevId, ICState, ICStateError};
-    pub use crate::{stationeers_ic, ICStateDefault, Line};
+    pub use crate::{Line, DEV_SIZE, MEM_SIZE, STACK_SIZE};
+    pub use ron::de::from_reader;
+    pub use std::fs::File;
 }

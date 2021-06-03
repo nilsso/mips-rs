@@ -15,7 +15,7 @@ use ron::{de::from_reader, Error as RonError};
 use rustyline::error::ReadlineError;
 
 use mips_parser::prelude::{Expr, MipsParserError, Node, Program};
-use mips_simulator::prelude::{stationeers_ic, DevId, DeviceKind, ICSimulator, ICState, ICStateError, Line};
+use mips_simulator::prelude::{DevId, DeviceKind, ICSimulator, ICState, ICStateError, Line};
 use util::impl_from_error;
 
 type Editor = rustyline::Editor<()>;
@@ -82,7 +82,7 @@ fn main() -> Result<(), CliError> {
     // Get program
     let program = get_program(&matches, &mut rl)?;
 
-    let mut state = stationeers_ic(&kinds);
+    let mut state = ICState::default();
 
     // Configure devices
     configure_devices(&mut state, &kinds, matches.value_of("device-conf"), &mut rl)?;
@@ -126,9 +126,9 @@ fn get_program(matches: &ArgMatches, rl: &mut Editor) -> Result<Program, CliErro
 }
 
 // Configure state devices, either via a configuration file or through standard input.
-fn configure_devices<'dk, const MS: usize, const DS: usize, const SS: usize>(
-    state: &mut ICState<'dk, MS, DS, SS>,
-    kinds: &'dk DeviceKinds,
+fn configure_devices<const MS: usize, const DS: usize, const SS: usize>(
+    state: &mut ICState<MS, DS, SS>,
+    kinds: &DeviceKinds,
     conf: Option<&str>,
     rl: &mut Editor,
 ) -> Result<(), CliError> {

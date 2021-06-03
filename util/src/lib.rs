@@ -1,3 +1,5 @@
+#![feature(trait_alias)]
+pub mod traits;
 pub mod test_utils;
 
 #[macro_export]

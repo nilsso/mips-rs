@@ -1,5 +1,4 @@
 //! Integrated Circuit (IC10) simulator state.
-#![allow(dead_code)]
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::{fmt, fmt::Debug, fmt::Display};
@@ -142,21 +141,21 @@ pub enum ExecResult {
 pub type ICStateResult<T> = Result<T, ICStateError>;
 
 pub type MemRegs<const MS: usize> = [f64; MS];
-pub type Devices<'dk, const DS: usize> = [Option<Device<'dk>>; DS];
+pub type Devices<const DS: usize> = [Option<Device>; DS];
 
 /// Integrated Circuit (IC10) simulator state.
 #[derive(Clone, Debug)]
-pub struct ICState<'dk, const MS: usize, const DS: usize, const SS: usize> {
+pub struct ICState<const MS: usize, const DS: usize, const SS: usize> {
     // Memory register, device IO and stack buffers
-    mem: MemRegs<MS>,
-    dev: Devices<'dk, DS>,
-    stk: MemRegs<SS>,
+    pub(crate) mem: MemRegs<MS>,
+    pub(crate) dev: Devices<DS>,
+    pub(crate) stk: MemRegs<SS>,
     // Device of the state itself, if set
-    dev_self: Option<Device<'dk>>,
+    pub(crate) dev_self: Option<Device>,
     // Alias map (alias string -> alias kind)
-    map: HashMap<String, AliasKind>,
+    pub(crate) map: HashMap<String, AliasKind>,
     // Network devices (hash -> devices of hash)
-    network: HashMap<i64, Vec<Device<'dk>>>,
+    pub(crate) network: HashMap<i64, Vec<Device>>,
     // Index of next line in program (used for jumps, but more so by `ICSimulator`)
     pub(crate) next_line_index: usize,
 }
@@ -167,7 +166,7 @@ mod arg_reducer;
 /// Stationeers/C# constants
 pub const EPS: f64 = 1.121039e-44; // floating-point epsilon
 
-impl<'dk, const MS: usize, const DS: usize, const SS: usize> ICState<'dk, MS, DS, SS> {
+impl<const MS: usize, const DS: usize, const SS: usize> ICState<MS, DS, SS> {
     // Special memory indices
     // (`sp` and `ra` aliases can change, but these stay internally constant)
     pub const SP: usize = MS - 2;
@@ -179,7 +178,7 @@ impl<'dk, const MS: usize, const DS: usize, const SS: usize> ICState<'dk, MS, DS
 
     /// New MIPS state with specified number of memory reigsters and device (IO) ports.
     pub fn new() -> Self {
-        const NONE: Option<Device<'static>> = None;
+        const NONE: Option<Device> = None;
 
         Self {
             mem: [0_f64; MS],
@@ -199,19 +198,19 @@ impl<'dk, const MS: usize, const DS: usize, const SS: usize> ICState<'dk, MS, DS
     }
 
     /// Builder helper to set a device.
-    pub fn with_dev(mut self, i: usize, dev: Device<'dk>) -> Self {
+    pub fn with_dev(mut self, i: usize, dev: Device) -> Self {
         self.dev.get_mut(i).map(|d| *d = Some(dev));
+        self
+    }
+
+    pub fn with_dev_self(mut self, dev: Device) -> Self {
+        self.dev_self = Some(dev);
         self
     }
 
     /// Builder helper to set a map alias.
     pub fn with_alias<K: Into<String>>(mut self, k: K, a: AliasKind) -> Self {
         self.map.insert(k.into(), a);
-        self
-    }
-
-    pub fn with_dev_self(mut self, dev: Device<'dk>) -> Self {
-        self.dev_self = Some(dev);
         self
     }
 
@@ -337,7 +336,7 @@ impl<'dk, const MS: usize, const DS: usize, const SS: usize> ICState<'dk, MS, DS
     }
 
     /// Get a device option reference.
-    fn get_dev_unchecked(&self, di: DevId) -> Option<&Option<Device<'dk>>> {
+    fn get_dev_unchecked(&self, di: DevId) -> Option<&Option<Device>> {
         match di {
             DevId::DevBuf(i) => self.dev.get(i),
             DevId::DevSelf => Some(&self.dev_self),
@@ -345,7 +344,7 @@ impl<'dk, const MS: usize, const DS: usize, const SS: usize> ICState<'dk, MS, DS
     }
 
     /// Get a mutable device option reference.
-    fn get_mut_dev_unchecked(&mut self, di: DevId) -> Option<&mut Option<Device<'dk>>> {
+    fn get_mut_dev_unchecked(&mut self, di: DevId) -> Option<&mut Option<Device>> {
         match di {
             DevId::DevBuf(i) => self.dev.get_mut(i),
             DevId::DevSelf => Some(&mut self.dev_self),
@@ -355,7 +354,7 @@ impl<'dk, const MS: usize, const DS: usize, const SS: usize> ICState<'dk, MS, DS
     /// Try to get a device option reference.
     ///
     /// Fails if the index is out of bounds.
-    pub fn get_dev_opt(&self, di: DevId) -> ICStateResult<&Option<Device<'dk>>> {
+    pub fn get_dev_opt(&self, di: DevId) -> ICStateResult<&Option<Device>> {
         match di {
             DevId::DevBuf(i) => Ok(self
                 .get_dev_unchecked(di)
@@ -367,7 +366,7 @@ impl<'dk, const MS: usize, const DS: usize, const SS: usize> ICState<'dk, MS, DS
     /// Try to get a mutable device option reference.
     ///
     /// Fails if the index is out of bounds.
-    pub fn get_mut_dev_opt(&mut self, di: DevId) -> ICStateResult<&mut Option<Device<'dk>>> {
+    pub fn get_mut_dev_opt(&mut self, di: DevId) -> ICStateResult<&mut Option<Device>> {
         match di {
             DevId::DevBuf(i) => Ok(self
                 .get_mut_dev_unchecked(di)
@@ -379,7 +378,7 @@ impl<'dk, const MS: usize, const DS: usize, const SS: usize> ICState<'dk, MS, DS
     /// Try to get a device reference.
     ///
     /// Fails if the index is out of bounds or if the underlying device is unset.
-    pub fn get_dev(&self, di: DevId) -> ICStateResult<&Device<'dk>> {
+    pub fn get_dev(&self, di: DevId) -> ICStateResult<&Device> {
         self.get_dev_opt(di)?
             .as_ref()
             .ok_or(ICStateError::DeviceError(DeviceError::Unset))
@@ -388,7 +387,7 @@ impl<'dk, const MS: usize, const DS: usize, const SS: usize> ICState<'dk, MS, DS
     /// Try to get a mutable device reference.
     ///
     /// Fails if the index is out of bounds or if the underlying device is unset.
-    pub fn get_mut_dev(&mut self, di: DevId) -> ICStateResult<&mut Device<'dk>> {
+    pub fn get_mut_dev(&mut self, di: DevId) -> ICStateResult<&mut Device> {
         self.get_mut_dev_opt(di)?
             .as_mut()
             .ok_or(ICStateError::DeviceError(DeviceError::Unset))
@@ -402,7 +401,7 @@ impl<'dk, const MS: usize, const DS: usize, const SS: usize> ICState<'dk, MS, DS
     }
 
     /// Try to set a device.
-    pub fn set_dev(&mut self, di: DevId, dev_opt: Option<Device<'dk>>) -> ICStateResult<()> {
+    pub fn set_dev(&mut self, di: DevId, dev_opt: Option<Device>) -> ICStateResult<()> {
         Ok(*self.get_mut_dev_opt(di)? = dev_opt)
     }
 
@@ -423,9 +422,13 @@ impl<'dk, const MS: usize, const DS: usize, const SS: usize> ICState<'dk, MS, DS
         }
     }
 
+    pub fn network_devices(&self) -> &HashMap<i64, Vec<Device>> {
+        &self.network
+    }
+
     /// Add device to the network.
-    pub fn dev_network_add(&mut self, dev: Device<'dk>) {
-        let hash = dev.kind.hash;
+    pub fn dev_network_add(&mut self, dev: Device) {
+        let hash = dev.hash;
         let devices = self.network.entry(hash).or_insert(Vec::new());
         devices.push(dev);
     }
@@ -1067,7 +1070,7 @@ impl<'dk, const MS: usize, const DS: usize, const SS: usize> ICState<'dk, MS, DS
     }
 }
 
-impl<'dk, const MS: usize, const DS: usize, const SS: usize> Display for ICState<'dk, MS, DS, SS> {
+impl<const MS: usize, const DS: usize, const SS: usize> Display for ICState<MS, DS, SS> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use itertools::join;
 

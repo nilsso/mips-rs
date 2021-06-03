@@ -4,6 +4,7 @@ members = [
     "./mips-parser",
     "./mips-simulator",
     "./util",
+    "./myps",
     # Simulator tools
     "./mips-simulator/tools/mips-simulator-cli",
     "./mips-simulator/tools/stationeering-to-ron"
