@@ -1,0 +1,10 @@
+[package]
+name = "myps"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+util = { path = "../util" }
+pest = "*"
+pest_derive = "*"
+lazy_static = "*"

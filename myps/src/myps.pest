@@ -1,0 +1,129 @@
+
+/* ============================================================================================== */
+/* Base (atomic) values */
+/* ============================================================================================== */
+
+/* An integer literal */
+int_lit = @{ ("+" | "-")? ~ ASCII_DIGIT+ }
+
+/* A float literal */
+num_lit = @{ int_part ~ ("." ~ dec_part)? ~ ((^"e" | ^"E") ~ exp_part)? }
+    int_part = _{ int_lit }
+    dec_part = _{ int_lit }
+    exp_part = _{ int_lit }
+
+/* A token string */
+token = @{ ASCII_ALPHA ~ ASCII_ALPHANUMERIC* }
+
+/* A variable (protects literal device labels as keywords) */
+var = @{ dev_lit? ~ token }
+
+/* A device register (batched or literal, but not a variable) */
+dev = _{ dev_batch | dev_lit | var }
+    dev_batch = ${ int ~ ".all" }
+    dev_lit   = ${ "d" ~ "r"* ~ !".all" ~ int_lit }
+
+/* Integers or floats */
+int = { int_lit | var }
+num = { num_lit | var }
+
+/* ============================================================================================== */
+/* L-values and R-values */
+/* ============================================================================================== */
+
+/* A device parameter */
+param = @{ token }
+
+/* An l-value
+ *
+ * An l-value is something which persists beyond an expression; that is, an l-value is a location at
+ * which we can store a number. An l-value can be a variable or the parameter of a device (or many
+ * devices in the case of the network).
+ */
+l_value = _{ l_param | var }
+    /* A device parameter to write to */
+    l_param = ${ dev ~ "." ~ param }
+
+/* Modes for batch reading a parameter from devices on the network to an r-value */
+batch_mode = _{ batch_avg | batch_sum | batch_min | batch_max }
+    /* Batch read modes */
+    batch_avg  = { "avg" }
+    batch_sum  = { "sum" }
+    batch_min  = { "min" }
+    batch_max  = { "max" }
+
+/* An r-value
+ *
+ * An r-value is something which does *not* persist beyond an expression, and ultimately is to be
+ * reduced to a number. An r-value can be a literal number, a value copied from a variable, a value
+ * read from a device parameter, or an expression of any of the previous.
+ */
+r_value = { net_param | dev_param | "(" ~ expr ~ ")" | num_lit | var }
+    net_param = ${ int ~ "." ~ batch_mode ~ "." ~ param }
+    dev_param = ${ dev ~ "." ~ param }
+
+/* ============================================================================================== */
+/* Expressions */
+/* ============================================================================================== */
+
+/* Operators */
+op = _{ u_op | b_op }
+    /* Unary operators */
+    u_op = _{ inv | not }
+        inv = { WHITESPACE* ~ "-" ~ WHITESPACE* }
+        not = { WHITESPACE* ~ "!" ~ WHITESPACE* }
+    /* Binary math/logical operators */
+    b_op = _{ add | sub | mul | div | rem | and | or | xor }
+        add = { WHITESPACE* ~ "+" ~ WHITESPACE* }
+        sub = { WHITESPACE* ~ "-" ~ WHITESPACE* }
+        mul = { WHITESPACE* ~ "*" ~ WHITESPACE* }
+        div = { WHITESPACE* ~ "/" ~ WHITESPACE* }
+        rem = { WHITESPACE* ~ "%" ~ WHITESPACE* }
+        and = @{ WHITESPACE+ ~ "and" ~ WHITESPACE+ }
+        or  = @{ WHITESPACE+ ~ "or"  ~ WHITESPACE+ }
+        xor = @{ WHITESPACE+ ~ "xor" ~ WHITESPACE+ }
+
+/* An expression */
+expr = _{ b_expr | u_expr | r_value }
+    /* A unary expression */
+    u_expr = ${ u_op ~ r_value }
+    /* A binary expression */
+    b_expr = ${ r_value ~ (b_op ~ r_value)+ }
+
+/* ============================================================================================== */
+/* Program and statements */
+/* ============================================================================================== */
+
+/* A statement
+ *
+ * In MYPS, a statement is either:
+ *   - assigning a device to a variable (aliasing a device),
+ *   - assigning an expression to a value (a variable or a device parameter), or
+ *   - a branch (loop/function)
+ */
+stmt = _{ branch | assign_alias | assign_value }
+    assign_alias = !{ var ~ "=" ~ (dev_batch | dev_lit) }
+    assign_value = !{ l_value ~ "=" ~ expr }
+
+/* A branch */
+branch = { (branch_loop | branch_def | branch_if | branch_while) ~ ":" }
+    branch_loop  = { "loop" }
+    branch_def   = { "def" ~ var }
+    branch_if    = { "if" ~ expr }
+    branch_while = { "while" ~ expr }
+
+line = { empty | (indent* ~ stmt ~ COMMENT* ~ NEWLINE) }
+    indent = { "    " }
+    empty = { WHITESPACE* ~ COMMENT* ~ NEWLINE }
+
+program = ${
+    SOI ~
+    line* ~
+    EOI
+}
+
+COMMENT = _{ "#" ~ (!NEWLINE ~ ANY)* }
+WHITESPACE = _{ " " }
+
+/* For tests */
+expr_line = _{ SOI ~ expr ~ NEWLINE ~ EOI }
