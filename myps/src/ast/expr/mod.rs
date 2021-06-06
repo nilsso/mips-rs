@@ -1,17 +1,14 @@
 // #![allow(unused_imports)]
-use std::{fmt, fmt::Display};
-
 use lazy_static::lazy_static;
 use pest::prec_climber::{Assoc, Operator, PrecClimber};
 
 use crate::ast_includes::*;
 
-pub mod operators;
 pub mod l_value;
+pub mod operator;
 pub mod r_value;
 
-use operators::{BinaryOp, UnaryOp};
-use r_value::RValue;
+use crate::ast::{BinaryOp, UnaryOp, RValue, Num};
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum Expr {
@@ -25,47 +22,68 @@ pub enum Expr {
         lhs: Box<Expr>,
         rhs: Box<Expr>,
     },
+    Ternary {
+        cond: Box<Expr>,
+        if_t: Box<Expr>,
+        if_f: Box<Expr>,
+    },
 }
 
 impl Expr {
     /// New rvalue.
     pub fn rvalue(x: RValue) -> Expr {
-        Expr::RValue(x).simplify()
+        Expr::RValue(x)
     }
 
     /// New rvalue literal.
     pub fn lit(x: f64) -> Expr {
-        Expr::RValue(RValue::Lit(x))
+        Expr::RValue(RValue::Num(Num::Lit(x)))
     }
 
     /// New unary expression (with literal value simplification).
     pub fn unary(op: UnaryOp, rhs: Expr) -> Self {
         let rhs = Box::new(rhs);
-        Self::Unary { op, rhs }.simplify()
+        Self::Unary { op, rhs }
     }
 
     /// New binary expression (with literal value simplification).
     pub fn binary(op: BinaryOp, lhs: Expr, rhs: Expr) -> Self {
         let lhs = Box::new(lhs);
         let rhs = Box::new(rhs);
-        Self::Binary { op, lhs, rhs }.simplify()
+        Self::Binary { op, lhs, rhs }
+    }
+
+    pub fn ternary(cond: Expr, if_t: Expr, if_f: Expr) -> Self {
+        let cond = Box::new(cond);
+        let if_t = Box::new(if_t);
+        let if_f = Box::new(if_f);
+        Self::Ternary { cond, if_t, if_f }
     }
 
     /// simplify an expression algebraicly or numerically via pattern matching.
+    ///
+    /// TODO: Remove from here, implement in the lexer
     pub fn simplify(self) -> Expr {
         match self {
             // Calculate unary expresion of a literal
             Expr::Unary {
                 op,
-                rhs: box Expr::RValue(RValue::Lit(n)),
+                rhs: box Expr::RValue(RValue::Num(Num::Lit(n))),
             } => Self::lit(op.operate(n)),
 
             // Calculate binary expressions of literals
             Expr::Binary {
                 op,
-                lhs: box Expr::RValue(RValue::Lit(l)),
-                rhs: box Expr::RValue(RValue::Lit(r)),
+                lhs: box Expr::RValue(RValue::Num(Num::Lit(l))),
+                rhs: box Expr::RValue(RValue::Num(Num::Lit(r))),
             } => Self::lit(op.operate(l, r)),
+
+            // Calculate ternary expression of literal
+            Expr::Ternary {
+                cond: box Expr::RValue(RValue::Num(Num::Lit(c))),
+                if_t: box Expr::RValue(RValue::Num(Num::Lit(t))),
+                if_f: box Expr::RValue(RValue::Num(Num::Lit(f))),
+            } => Self::lit(if c != 0.0 { t } else { f }),
 
             // Unpack r-value expression
             Expr::RValue(RValue::Expr(box e)) => e,
@@ -94,8 +112,14 @@ impl<'i> AstNode<'i, Rule, MypsParser, MypsParserError> for Expr {
                 let rhs = pairs.next_pair()?.try_into_ast()?;
                 Ok(Expr::unary(op, rhs))
             }
-            // Binary expression using operator precedence climber
             Rule::b_expr => Ok(expr_climb(pair.into_inner())),
+            Rule::t_expr => {
+                let mut pairs = pair.into_inner();
+                let cond = pairs.next_pair()?.try_into_ast()?;
+                let if_t = pairs.next_pair()?.try_into_ast()?;
+                let if_f = pairs.next_pair()?.try_into_ast()?;
+                Ok(Expr::ternary(cond, if_t, if_f))
+            }
             Rule::r_value => Ok(Self::rvalue(pair.try_into_ast()?)),
             _ => return Err(MypsParserError::wrong_rule("an r-value expression", pair)),
         }
@@ -110,16 +134,31 @@ impl Display for Expr {
             RValue(rv) => write!(f, "{}", rv),
             Unary { op, rhs } => write!(f, "({}{})", op, rhs),
             Binary { op, lhs, rhs } => write!(f, "({}{}{})", lhs, op, rhs),
+            Ternary { cond, if_t, if_f } => write!(f, "({}?{}:{})", cond, if_t, if_f),
         }
     }
 }
 
+// impl DisplayMips for Expr {
+//     fn fmt_mips(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//     }
+// }
+
 // Operator precedence climber
 lazy_static! {
     static ref CLIMBER: PrecClimber<Rule> = PrecClimber::new(vec![
+        // Logical
         Operator::new(Rule::or, Assoc::Left),
         Operator::new(Rule::xor, Assoc::Left),
         Operator::new(Rule::and, Assoc::Left),
+        // Relational
+        Operator::new(Rule::eq, Assoc::Left),
+        Operator::new(Rule::ge, Assoc::Left),
+        Operator::new(Rule::gt, Assoc::Left),
+        Operator::new(Rule::le, Assoc::Left),
+        Operator::new(Rule::lt, Assoc::Left),
+        Operator::new(Rule::ne, Assoc::Left),
+        // Numerical
         Operator::new(Rule::add, Assoc::Left),
         Operator::new(Rule::sub, Assoc::Left),
         Operator::new(Rule::rem, Assoc::Left),

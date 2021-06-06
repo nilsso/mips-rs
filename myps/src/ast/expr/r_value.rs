@@ -2,7 +2,7 @@ use std::{fmt, fmt::Display};
 
 use super::Expr;
 use crate::ast_includes::*;
-use crate::nodes::{Dev, Int};
+use crate::ast::{Dev, Int, Num};
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum Mode {
@@ -43,10 +43,9 @@ impl Display for Mode {
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum RValue {
-    Lit(f64),
+    Num(Num),
     NetParam(Int, Mode, String),
     DevParam(Dev, String),
-    Var(String),
     Expr(Box<Expr>),
 }
 
@@ -61,7 +60,7 @@ impl<'i> AstNode<'i, Rule, MypsParser, MypsParserError> for RValue {
     fn try_from_pair(pair: Pair<Rule>) -> MypsParserResult<Self> {
         match pair.as_rule() {
             Rule::r_value => pair.first_inner()?.try_into_ast(),
-            Rule::num_lit => Ok(Self::Lit(pair.as_str().parse()?)),
+            Rule::num => Ok(Self::Num(pair.try_into_ast()?)),
             Rule::net_param => {
                 let mut pairs = pair.into_inner();
                 let hash = pairs.next_pair()?.try_into_ast()?;
@@ -75,10 +74,9 @@ impl<'i> AstNode<'i, Rule, MypsParser, MypsParserError> for RValue {
                 let param = pairs.next_pair()?.as_str().into();
                 Ok(Self::DevParam(dev, param))
             }
-            Rule::expr | Rule::u_expr | Rule::b_expr => {
+            Rule::expr | Rule::u_expr | Rule::b_expr | Rule::t_expr => {
                 Ok(Self::Expr(Box::new(pair.try_into_ast()?)))
             }
-            Rule::var => Ok(Self::Var(pair.as_str().into())),
             _ => return Err(MypsParserError::wrong_rule("an r-value", pair)),
         }
     }
@@ -89,10 +87,9 @@ impl Display for RValue {
         use RValue::*;
 
         match self {
-            Lit(n) => write!(f, "{}", n),
+            Num(n) => write!(f, "{}", n),
             NetParam(hash, mode, param) => write!(f, "{}.{}.{}", hash, mode, param),
             DevParam(dev, param) => write!(f, "{}.{}", dev, param),
-            Var(s) => write!(f, "{}", s),
             Expr(e) => write!(f, "({})", e),
         }
     }

@@ -58,7 +58,7 @@ batch_mode = _{ batch_avg | batch_sum | batch_min | batch_max }
  * reduced to a number. An r-value can be a literal number, a value copied from a variable, a value
  * read from a device parameter, or an expression of any of the previous.
  */
-r_value = { net_param | dev_param | "(" ~ expr ~ ")" | num_lit | var }
+r_value = { net_param | dev_param | "(" ~ expr ~ ")" | num }
     net_param = ${ int ~ "." ~ batch_mode ~ "." ~ param }
     dev_param = ${ dev ~ "." ~ param }
 
@@ -73,22 +73,33 @@ op = _{ u_op | b_op }
         inv = { WHITESPACE* ~ "-" ~ WHITESPACE* }
         not = { WHITESPACE* ~ "!" ~ WHITESPACE* }
     /* Binary math/logical operators */
-    b_op = _{ add | sub | mul | div | rem | and | or | xor }
+    b_op = _{ add | sub | mul | div | rem | and | or | xor | eq | ge | gt | le | lt | ne }
+        /* Numerical */
         add = { WHITESPACE* ~ "+" ~ WHITESPACE* }
         sub = { WHITESPACE* ~ "-" ~ WHITESPACE* }
         mul = { WHITESPACE* ~ "*" ~ WHITESPACE* }
         div = { WHITESPACE* ~ "/" ~ WHITESPACE* }
         rem = { WHITESPACE* ~ "%" ~ WHITESPACE* }
+        /* Logical */
         and = @{ WHITESPACE+ ~ "and" ~ WHITESPACE+ }
         or  = @{ WHITESPACE+ ~ "or"  ~ WHITESPACE+ }
         xor = @{ WHITESPACE+ ~ "xor" ~ WHITESPACE+ }
+        /* Relational */
+        eq = { WHITESPACE* ~ "==" ~ WHITESPACE* }
+        ge = { WHITESPACE* ~ ">=" ~ WHITESPACE* }
+        gt = { WHITESPACE* ~ ">"  ~ WHITESPACE* }
+        le = { WHITESPACE* ~ "<=" ~ WHITESPACE* }
+        lt = { WHITESPACE* ~ "<"  ~ WHITESPACE* }
+        ne = { WHITESPACE* ~ "!=" ~ WHITESPACE* }
 
 /* An expression */
-expr = _{ b_expr | u_expr | r_value }
+expr = _{ t_expr | b_expr | u_expr | r_value }
     /* A unary expression */
     u_expr = ${ u_op ~ r_value }
     /* A binary expression */
     b_expr = ${ r_value ~ (b_op ~ r_value)+ }
+    /* A ternary expression (i.e. MIPS `select`) */
+    t_expr = { r_value ~ "?" ~ r_value ~ ":" ~ r_value }
 
 /* ============================================================================================== */
 /* Program and statements */
@@ -101,16 +112,18 @@ expr = _{ b_expr | u_expr | r_value }
  *   - assigning an expression to a value (a variable or a device parameter), or
  *   - a branch (loop/function)
  */
-stmt = _{ branch | assign_alias | assign_value }
+stmt = { branch | assign_alias | assign_value }
     assign_alias = !{ var ~ "=" ~ (dev_batch | dev_lit) }
     assign_value = !{ l_value ~ "=" ~ expr }
 
 /* A branch */
-branch = { (branch_loop | branch_def | branch_if | branch_while) ~ ":" }
-    branch_loop  = { "loop" }
-    branch_def   = { "def" ~ var }
-    branch_if    = { "if" ~ expr }
-    branch_while = { "while" ~ expr }
+branch = ${ (branch_loop | branch_def | branch_if | branch_elif | branch_else | branch_while) ~ ":" }
+    branch_loop  = !{ "loop" }
+    branch_def   = !{ "def" ~ var }
+    branch_if    = !{ "if" ~ expr }
+    branch_elif  = !{ "elif" ~ expr }
+    branch_else  = !{ "else" }
+    branch_while = !{ "while" ~ expr }
 
 line = { empty | (indent* ~ stmt ~ COMMENT* ~ NEWLINE) }
     indent = { "    " }
@@ -126,4 +139,4 @@ COMMENT = _{ "#" ~ (!NEWLINE ~ ANY)* }
 WHITESPACE = _{ " " }
 
 /* For tests */
-expr_line = _{ SOI ~ expr ~ NEWLINE ~ EOI }
+if_line = _{ SOI ~ branch_if ~ NEWLINE }

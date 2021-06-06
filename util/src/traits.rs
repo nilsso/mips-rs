@@ -8,13 +8,15 @@ use pest::{RuleType, Parser};
 use pest::iterators::{Pair, Pairs};
 use pest::error::Error as PegError;
 
+/// Abstract syntax tree conversion error type.
 #[derive(Debug)]
 pub enum AstError {
     InsufficientPairs,
 }
 
-pub trait ParserError<R> = From<PegError<R>> + From<AstError> + From<IOError> + Debug;
-
+/// Get next [`Pair`](`pest::iterators::Pair`) from [`Pairs`](`pest::iterators::Pairs`) trait.
+///
+/// Provides blanket implementations over [`Pairs`](`pest::iterators::Pairs`).
 pub trait NextPair<'i, R>
 where
     R: RuleType,
@@ -22,6 +24,10 @@ where
     fn next_pair(&mut self) -> Result<Pair<'i, R>, AstError>;
 }
 
+/// Get first inner [`Pair`](`pest::iterators::Pair`) trait.
+///
+/// Provides blanket implementations over [`Pair`](`pest::iterators::Pair`)
+/// and [`Pairs`](`pest::iterators::Pairs`).
 pub trait FirstInner<'i, R>
 where
     R: RuleType,
@@ -56,12 +62,17 @@ where
     }
 }
 
+/// Abstract syntax tree conversion traits.
+///
+/// Provided an implementation of [`try_from_pair`](`AstNode::try_from_pair`),
+/// provides additional conversion functions from `&str` and `&Path` as well as
+/// error-less but panicking versions.
 pub trait AstNode<'i, R, P, E>
 where
     Self: Sized,
     R: RuleType,
     P: Parser<R>,
-    E: ParserError<R>,
+    E: From<PegError<R>> + From<AstError> + From<IOError> + Debug,
 {
     type Output;
 
@@ -92,12 +103,13 @@ where
     }
 }
 
+/// Pair into [`AstNode`] conversion trait.
 pub trait IntoAst<'i, R, P, E>
 where
     Self: Sized,
     R: RuleType,
     P: Parser<R>,
-    E: ParserError<R>,
+    E: From<PegError<R>> + From<AstError> + From<IOError> + Debug,
 {
     fn try_into_ast<A: AstNode<'i, R, P, E, Output = A>>(self) -> Result<A, E>;
 
@@ -110,27 +122,9 @@ impl<'i, R, P, E> IntoAst<'i, R, P, E> for Pair<'i, R>
 where
     R: RuleType,
     P: Parser<R>,
-    E: ParserError<R>,
+    E: From<PegError<R>> + From<AstError> + From<IOError> + Debug,
 {
     fn try_into_ast<A: AstNode<'i, R, P, E, Output = A>>(self) -> Result<A, E> {
         A::try_from_pair(self)
     }
 }
-
-// pub trait IntoAst<A: Ast>
-// where
-//     Self: Sized,
-// {
-//     fn try_into_ast(self) -> MypsParserResult<A>;
-
-//     fn into_ast(self) -> A {
-//         Self::try_into_ast(self).unwrap()
-//     }
-// }
-
-// impl<'i, A: Ast<Output = A>> IntoAst<A> for Pair<'i, Rule> {
-//     fn try_into_ast(self) -> MypsParserResult<A> {
-//         A::try_from_pair(self)
-//     }
-// }
-

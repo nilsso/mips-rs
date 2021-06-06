@@ -1,3 +1,22 @@
+MYPS Lexer
+==========
+
+## Notes and todo
+
+* Probably should move all mathematic reductions from the parser to the lexer,
+    where constant replacements can be done at the same time.
+* Essentially all branches need to check whether or not a return line is necessary
+    (that is, to distinguish between `j/jr` and `jal`)
+* Branching statements need to cover:
+    * `bdns` - Branch if device not set
+    * `bdnsal` - Branch if 
+    * `bdse`
+    * `bdseal`
+    * `brdns`
+    * `brdse`
+
+## Specifications?
+
 For example, a simple solar panel control program:
 ```
 alias sensor d0

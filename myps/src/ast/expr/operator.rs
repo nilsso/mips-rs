@@ -56,21 +56,37 @@ impl Display for UnaryOp {
 // ================================================================================================
 #[rustfmt::skip]
 #[derive(Clone, PartialEq, Debug)]
-pub enum BinaryOp { Add, Sub, Mul, Div, Rem, And, Or, Xor }
+pub enum BinaryOp {
+    // Numerical
+    Add, Sub, Mul, Div, Rem,
+    // Logical
+    And, Or, Xor,
+    // Relational
+    EQ, GE, GT, LE, LT, NE,
+}
 
 impl BinaryOp {
     pub fn operate(&self, lhs: f64, rhs: f64) -> f64 {
         use BinaryOp::*;
 
         match self {
+            // Numerical
             Add => lhs + rhs,
             Sub => lhs - rhs,
             Mul => lhs * rhs,
             Div => lhs / rhs,
             Rem => lhs.rem_euclid(rhs),
+            // Logical
             And => bool_to_num((lhs != 0.0) && (rhs != 0.0)),
             Or => bool_to_num((lhs != 0.0) || (rhs != 0.0)),
             Xor => bool_to_num((lhs != 0.0) != (rhs != 0.0)),
+            // Relational
+            EQ => bool_to_num(lhs == rhs),
+            GE => bool_to_num(lhs >= rhs),
+            GT => bool_to_num(lhs > rhs),
+            LE => bool_to_num(lhs <= rhs),
+            LT => bool_to_num(lhs < rhs),
+            NE => bool_to_num(lhs != rhs),
         }
     }
 }
@@ -82,14 +98,23 @@ impl<'i> AstNode<'i, Rule, MypsParser, MypsParserError> for BinaryOp {
 
     fn try_from_pair(pair: Pair<Rule>) -> MypsParserResult<Self> {
         Ok(match pair.as_rule() {
+            // Numerical
             Rule::add => Self::Add,
             Rule::sub => Self::Sub,
             Rule::mul => Self::Mul,
             Rule::div => Self::Div,
             Rule::rem => Self::Rem,
+            // Logical
             Rule::and => Self::And,
             Rule::or => Self::Or,
             Rule::xor => Self::Xor,
+            // Relational
+            Rule::eq => Self::EQ,
+            Rule::ge => Self::GE,
+            Rule::gt => Self::GT,
+            Rule::le => Self::LE,
+            Rule::lt => Self::LT,
+            Rule::ne => Self::NE,
             _ => return Err(MypsParserError::wrong_rule("a binary operator", pair)),
         })
     }
@@ -100,14 +125,23 @@ impl Display for BinaryOp {
         use BinaryOp::*;
 
         match self {
+            // Numerical
             Add => write!(f, "+"),
             Sub => write!(f, "-"),
             Mul => write!(f, "*"),
             Div => write!(f, "/"),
             Rem => write!(f, "%"),
+            // Logical
             And => write!(f, " and "),
             Or => write!(f, " or "),
             Xor => write!(f, " xor "),
+            // Relational
+            EQ => write!(f, "=="),
+            GE => write!(f, ">="),
+            GT => write!(f, ">"),
+            LE => write!(f, "<="),
+            LT => write!(f, "<"),
+            NE => write!(f, "!="),
         }
     }
 }
