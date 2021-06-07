@@ -1,8 +1,4 @@
-use std::{fmt, fmt::Display};
-
-use super::Expr;
-use crate::ast_includes::*;
-use crate::ast::{Dev, Int, Num};
+use crate::superprelude::*;
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum Mode {
@@ -12,18 +8,18 @@ pub enum Mode {
     Max,
 }
 
-impl<'i> AstNode<'i, Rule, MypsParser, MypsParserError> for Mode {
+impl<'i> AstNode<'i, Rule, MypsParser, MypsLexerError> for Mode {
     type Output = Self;
 
     const RULE: Rule = Rule::batch_mode;
 
-    fn try_from_pair(pair: Pair<Rule>) -> MypsParserResult<Self> {
+    fn try_from_pair(pair: Pair<Rule>) -> MypsLexerResult<Self> {
         match pair.as_rule() {
             Rule::batch_avg => Ok(Mode::Avg),
             Rule::batch_sum => Ok(Mode::Sum),
             Rule::batch_min => Ok(Mode::Min),
             Rule::batch_max => Ok(Mode::Max),
-            _ => Err(MypsParserError::wrong_rule("a batch mode", pair)),
+            _ => Err(MypsLexerError::wrong_rule("a batch mode", pair)),
         }
     }
 }
@@ -33,10 +29,10 @@ impl Display for Mode {
         use Mode::*;
 
         match self {
-            Avg => write!(f, "avg"),
-            Sum => write!(f, "sum"),
-            Min => write!(f, "min"),
-            Max => write!(f, "max"),
+            Avg => write!(f, "0"),
+            Sum => write!(f, "1"),
+            Min => write!(f, "2"),
+            Max => write!(f, "3"),
         }
     }
 }
@@ -49,7 +45,7 @@ pub enum RValue {
     Expr(Box<Expr>),
 }
 
-impl<'i> AstNode<'i, Rule, MypsParser, MypsParserError> for RValue {
+impl<'i> AstNode<'i, Rule, MypsParser, MypsLexerError> for RValue {
     type Output = Self;
 
     // r_value = { num_lit | net_param | dev_param | "(" ~ expr ~ ")" | var }
@@ -57,10 +53,9 @@ impl<'i> AstNode<'i, Rule, MypsParser, MypsParserError> for RValue {
     //     dev_param = ${ dev ~ "." ~ param }
     const RULE: Rule = Rule::r_value;
 
-    fn try_from_pair(pair: Pair<Rule>) -> MypsParserResult<Self> {
+    fn try_from_pair(pair: Pair<Rule>) -> MypsLexerResult<Self> {
         match pair.as_rule() {
             Rule::r_value => pair.first_inner()?.try_into_ast(),
-            Rule::num => Ok(Self::Num(pair.try_into_ast()?)),
             Rule::net_param => {
                 let mut pairs = pair.into_inner();
                 let hash = pairs.next_pair()?.try_into_ast()?;
@@ -77,20 +72,8 @@ impl<'i> AstNode<'i, Rule, MypsParser, MypsParserError> for RValue {
             Rule::expr | Rule::u_expr | Rule::b_expr | Rule::t_expr => {
                 Ok(Self::Expr(Box::new(pair.try_into_ast()?)))
             }
-            _ => return Err(MypsParserError::wrong_rule("an r-value", pair)),
-        }
-    }
-}
-
-impl Display for RValue {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use RValue::*;
-
-        match self {
-            Num(n) => write!(f, "{}", n),
-            NetParam(hash, mode, param) => write!(f, "{}.{}.{}", hash, mode, param),
-            DevParam(dev, param) => write!(f, "{}.{}", dev, param),
-            Expr(e) => write!(f, "({})", e),
+            Rule::num_lit | Rule::var => Ok(Self::Num(pair.try_into_ast()?)),
+            _ => return Err(MypsLexerError::wrong_rule("an r-value", pair)),
         }
     }
 }

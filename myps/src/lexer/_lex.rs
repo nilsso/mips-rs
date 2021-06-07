@@ -1,29 +1,17 @@
-#![allow(unused_imports)]
 #![allow(unused_variables)]
+
 use std::collections::HashSet;
 
-use pest::Parser;
+use crate::superprelude::*;
 
-use crate::lexer::{Alias, AliasTable, Block, Item, MypsLexerError, MypsLexerResult, Statement};
-use crate::{
-    ast::{Dev, Expr, Int, LValue, Line, Num, Program, RValue, Statement as AstStatement},
-    MypsParser, Rule,
-};
-use util::traits::{AstNode, FirstInner};
-
-pub fn parse_and_lex(input: &str) -> MypsLexerResult<(Item, AliasTable)> {
-    let peg = MypsParser::parse(Rule::program, input)?;
-    let program = Program::try_from_pair(peg.first_inner()?)?;
-    lex(program)
-}
-
-pub fn lex(program_ast: Program) -> MypsLexerResult<(Item, AliasTable)> {
+pub fn lex(pairs: Pairs) -> MypsLexerResult<(Item, AliasTable)> {
     let mut alias_table = AliasTable::new();
-    let mut blocks = vec![Item::new_block(Block::program())];
+    let mut blocks = vec![Item::new_block(Block::program(), None)];
     let mut indent_stack = vec![0_usize];
     let mut expect_indent = false;
 
-    for Line { indent, stmt } in program_ast.lines.into_iter() {
+    // for Line { indent, stmt, comment } in program_ast.lines.into_iter() {
+    for pair in pairs {
         // Handle indentation
         let curr_indent = *indent_stack.last().unwrap();
         if expect_indent {
@@ -31,21 +19,21 @@ pub fn lex(program_ast: Program) -> MypsLexerResult<(Item, AliasTable)> {
             if indent <= curr_indent {
                 panic!("Expected indent");
             } else {
-                expect_indent = false;
                 // Push this new indent level
                 indent_stack.push(indent);
+                expect_indent = false;
             }
         } else {
             if indent < curr_indent {
                 // Drop in indent level means the end of a branch
-                while indent < *indent_stack.last().unwrap() {
+                while indent < curr_indent {
                     // Pop off stack levels until the item level is at or above the stack level
                     let block = blocks.pop().unwrap();
                     let head = blocks.last_mut().unwrap();
                     head.push_item(block);
                     indent_stack.pop();
                 }
-                if indent != *indent_stack.last().unwrap() {
+                if indent != curr_indent {
                     // If now the item and stack levels are different,
                     // this item level was never on the stack before
                     panic!("Incorrect indent");
@@ -59,33 +47,44 @@ pub fn lex(program_ast: Program) -> MypsLexerResult<(Item, AliasTable)> {
                 // TODO: Analyze expressions HERE
 
                 // Push a new branch and expect the next line to be indented
-                blocks.push(Item::new_branch(branch));
+                blocks.push(Item::new_branch(branch, comment));
                 expect_indent = true;
             }
-            // Statement::AssignAlias(a, d) => {
-            //     match d {
-            //         Dev::Lit(b, i) =>
-            //         Dev::Batch,
-            //         Dev::Var,
-            //     }
-            //     alias_table.insert(a, Alias::Dev(d));
-            // },
+            AstStatement::AssignAlias(a, d) => {
+                let mut dependencies = HashSet::new();
+                let alias = match &d {
+                    Dev::Lit(b, i) => Alias::Dev(DevAlias::Lit(*b, *i)),
+                    Dev::Batch(hash) => Alias::Dev(DevAlias::Batch(*hash)),
+                    Dev::Var(k) => {
+                        dependencies.insert(k.clone());
+                        Alias::Var
+                    },
+                };
+                alias_table.insert(a.clone(), alias);
+                let head = blocks.last_mut().unwrap();
+                head.push_item(Item::new_assign_alias(a, d, dependencies, comment));
+            },
             AstStatement::AssignValue(l, r) => {
                 let dependencies = analyze_rvalue(&r, &alias_table)?;
-                if let RValue::Num(Num::Lit(n)) = &r {
-                    if let LValue::Var(k) = &l {
-                        alias_table.insert(k.clone(), Alias::Var);
-                    }
+                match &l {
+                    LValue::Var(k) => {
+                        if let RValue::Num(Num::Lit(n)) = &r {
+                            alias_table.insert(k.clone(), Alias::Num(*n));
+                        } else {
+                            alias_table.insert(k.clone(), Alias::Var);
+                        }
+                    },
+                    _ => unreachable!("{:?}", l),
                 }
                 let head = blocks.last_mut().unwrap();
-                head.push_item(Item::new_assign_value(l, r, dependencies));
+                head.push_item(Item::new_assign_value(l, r, dependencies, comment));
             }
-            _ => {
-                unreachable!()
-                // Push item to head block.
-                // let head = blocks.last_mut().unwrap();
-                // head.push(Item::try_from_stmt(stmt)?);
-            }
+            // _ => {
+            //     unreachable!()
+            //     // Push item to head block.
+            //     // let head = blocks.last_mut().unwrap();
+            //     // head.push(Item::try_from_stmt(stmt)?);
+            // }
         }
     }
     // Reduce whats left into branches of items
@@ -128,7 +127,7 @@ fn analyze_rvalue_helper(
         }
         RValue::NetParam(hash, ..) => {
             if let Int::Var(k) = hash {
-                alias_table.validate_int(k)?;
+                alias_table.validate_num(k)?;
                 dependencies.insert(k.clone());
             }
         }

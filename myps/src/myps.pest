@@ -13,19 +13,21 @@ num_lit = @{ int_part ~ ("." ~ dec_part)? ~ ((^"e" | ^"E") ~ exp_part)? }
     exp_part = _{ int_lit }
 
 /* A token string */
-token = @{ ASCII_ALPHA ~ ASCII_ALPHANUMERIC* }
+token = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
 
 /* A variable (protects literal device labels as keywords) */
-var = @{ dev_lit? ~ token }
-
-/* A device register (batched or literal, but not a variable) */
-dev = _{ dev_batch | dev_lit | var }
-    dev_batch = ${ int ~ ".all" }
-    dev_lit   = ${ "d" ~ "r"* ~ !".all" ~ int_lit }
+var = @{ dev_base? ~ token }
 
 /* Integers or floats */
 int = { int_lit | var }
 num = { num_lit | var }
+
+/* A device register (batched or literal, but not a variable) */
+dev = _{ dev_lit | var }
+    dev_lit = _{ dev_id | dev_batch | dev_base }
+        dev_batch = ${ int ~ ".all" }
+        dev_base  = ${ "d" ~ "r"* ~ !".all" ~ int_lit }
+        dev_id    = ${ "d(" ~ int ~ ")" }
 
 /* ============================================================================================== */
 /* L-values and R-values */
@@ -33,6 +35,9 @@ num = { num_lit | var }
 
 /* A device parameter */
 param = @{ token }
+
+/* A function call */
+func = ${ var ~ "()" }
 
 /* An l-value
  *
@@ -58,9 +63,10 @@ batch_mode = _{ batch_avg | batch_sum | batch_min | batch_max }
  * reduced to a number. An r-value can be a literal number, a value copied from a variable, a value
  * read from a device parameter, or an expression of any of the previous.
  */
-r_value = { net_param | dev_param | "(" ~ expr ~ ")" | num }
-    net_param = ${ int ~ "." ~ batch_mode ~ "." ~ param }
-    dev_param = ${ dev ~ "." ~ param }
+r_value = { r_value_lit | var }
+    r_value_lit = _{ net_param | dev_param | func | "(" ~ expr ~ ")" | num_lit }
+        net_param = ${ int ~ "." ~ batch_mode ~ "." ~ param }
+        dev_param = ${ dev ~ "." ~ param }
 
 /* ============================================================================================== */
 /* Expressions */
@@ -105,29 +111,34 @@ expr = _{ t_expr | b_expr | u_expr | r_value }
 /* Program and statements */
 /* ============================================================================================== */
 
-/* A statement
- *
- * In MYPS, a statement is either:
- *   - assigning a device to a variable (aliasing a device),
- *   - assigning an expression to a value (a variable or a device parameter), or
- *   - a branch (loop/function)
- */
-stmt = { branch | assign_alias | assign_value }
-    assign_alias = !{ var ~ "=" ~ (dev_batch | dev_lit) }
-    assign_value = !{ l_value ~ "=" ~ expr }
-
 /* A branch */
-branch = ${ (branch_loop | branch_def | branch_if | branch_elif | branch_else | branch_while) ~ ":" }
+branch = {
+    ( branch_loop |
+      branch_if |
+      branch_elif |
+      branch_else |
+      branch_while |
+      branch_for |
+      branch_def
+    ) ~ ":"
+}
     branch_loop  = !{ "loop" }
-    branch_def   = !{ "def" ~ var }
     branch_if    = !{ "if" ~ expr }
     branch_elif  = !{ "elif" ~ expr }
     branch_else  = !{ "else" }
     branch_while = !{ "while" ~ expr }
+    branch_for   = !{ "for" ~ var ~ "in" ~ int ~ ".." ~ int }
+    branch_def   = !{ "def" ~ var }
 
-line = { empty | (indent* ~ stmt ~ COMMENT* ~ NEWLINE) }
+/* A statement */
+stmt = { assign_alias | assign_value | func }
+    assign_alias = !{ var ~ "=" ~ dev_lit ~ !("." ~ param)}
+    assign_value = !{ l_value ~ "=" ~ expr }
+
+line = { empty | (indent* ~ item ~ WHITESPACE* ~ comment? ~ NEWLINE) }
+    empty = { WHITESPACE* ~ WHITESPACE* ~ COMMENT* ~ NEWLINE }
     indent = { "    " }
-    empty = { WHITESPACE* ~ COMMENT* ~ NEWLINE }
+    item = { branch | stmt }
 
 program = ${
     SOI ~
@@ -135,6 +146,7 @@ program = ${
     EOI
 }
 
+comment = @{ COMMENT+ }
 COMMENT = _{ "#" ~ (!NEWLINE ~ ANY)* }
 WHITESPACE = _{ " " }
 

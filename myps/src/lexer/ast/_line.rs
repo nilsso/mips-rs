@@ -1,12 +1,13 @@
 use std::{fmt, fmt::Display};
 
-use crate::ast_includes::*;
 use crate::ast::Statement;
+use crate::ast_includes::*;
 
 #[derive(Debug)]
 pub struct Line {
     pub(crate) indent: usize,
     pub(crate) stmt: Statement,
+    pub(crate) comment: Option<String>,
 }
 
 impl<'i> AstNode<'i, Rule, MypsParser, MypsParserError> for Line {
@@ -15,15 +16,21 @@ impl<'i> AstNode<'i, Rule, MypsParser, MypsParserError> for Line {
     const RULE: Rule = Rule::line;
 
     fn try_from_pair(pair: Pair<Rule>) -> MypsParserResult<Option<Self>> {
-        fn line_to_indent_item(pair: Pair<Rule>) -> MypsParserResult<Option<(usize, Pair<Rule>)>> {
+        fn line_to_indent_item(
+            pair: Pair<Rule>,
+        ) -> MypsParserResult<Option<(usize, Pair<Rule>, Option<String>)>> {
             match pair.as_rule() {
                 Rule::line => {
                     let mut indent = 0;
+                    let mut stmt = None;
+                    let mut comment = None;
                     for item in pair.into_inner() {
                         match item.as_rule() {
                             Rule::indent => indent += 1,
                             Rule::empty => return Ok(None),
-                            Rule::stmt => return Ok(Some((indent, item))),
+                            Rule::stmt => stmt = Some(item),
+                            Rule::comment => comment = Some(item.as_str().into()),
+                            // Rule::stmt => return Ok(Some((indent, item))),
                             _ => {
                                 return Err(MypsParserError::wrong_rule(
                                     "an indent or statement",
@@ -32,7 +39,7 @@ impl<'i> AstNode<'i, Rule, MypsParser, MypsParserError> for Line {
                             }
                         }
                     }
-                    unreachable!();
+                    Ok(Some((indent, stmt.unwrap(), comment)))
                 }
                 _ => Err(MypsParserError::wrong_rule("a (indented) statement", pair)),
             }
@@ -41,9 +48,13 @@ impl<'i> AstNode<'i, Rule, MypsParser, MypsParserError> for Line {
         // #[rustfmt::skip]
         match pair.as_rule() {
             Rule::line => {
-                if let Some((indent, stmt_pair)) = line_to_indent_item(pair)? {
+                if let Some((indent, stmt_pair, comment)) = line_to_indent_item(pair)? {
                     let stmt = stmt_pair.first_inner()?.try_into_ast()?;
-                    Ok(Some(Self { indent, stmt }))
+                    Ok(Some(Self {
+                        indent,
+                        stmt,
+                        comment,
+                    }))
                 } else {
                     Ok(None)
                 }

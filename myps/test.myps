@@ -1,4 +1,17 @@
-loop:
-    x = 0
-    y = x
-    z = y
+R = 8.31446261815324
+FurnaceHash = 545937711
+vT = 1000 # Furnace volume
+
+pT = 500
+tT = 1000
+HAnalyzer = d0
+CAnalyzer = d1
+
+nT = (pT*vT)/(R*tT) # nT = (pT*vT)/(R*tT)
+
+tH = HAnalyzer.Temperature # Hot source temp
+tC = CAnalyzer.Temperature # Cold source temp
+
+nF = FurnaceHash.sum.TotalMoles # Furnace moles
+tF  = FurnaceHash.sum.Temperature # Furnace temp
+nRC = nF-nT*(tH-tT)/(tH-tF) # nRC = nF-nT*(tH-tT)/(tH-tF)

@@ -1,16 +1,15 @@
-use std::{fmt, fmt::Display};
-
-use crate::ast_includes::*;
+use crate::superprelude::*;
 
 /// Device node.
 #[derive(Clone, PartialEq, Debug)]
 pub enum Dev {
     Lit(usize, usize),
+    Indexed(Int),
     Batch(i64),
     Var(String),
 }
 
-impl<'i> AstNode<'i, Rule, MypsParser, MypsParserError> for Dev {
+impl<'i> AstNode<'i, Rule, MypsParser, MypsLexerError> for Dev {
     type Output = Self;
 
     // dev = _{ dev_batch | dev_lit | var }
@@ -18,9 +17,9 @@ impl<'i> AstNode<'i, Rule, MypsParser, MypsParserError> for Dev {
     //     dev_lit   = ${ "d" ~ "r"* ~ !".all" ~ int_lit }
     const RULE: Rule = Rule::dev;
 
-    fn try_from_pair(pair: Pair<Rule>) -> MypsParserResult<Self> {
+    fn try_from_pair(pair: Pair<Rule>) -> MypsLexerResult<Self> {
         match pair.as_rule() {
-            Rule::dev_lit => {
+            Rule::dev_base => {
                 let s = pair.as_str();
                 let indirections = s.bytes().filter(|b| *b == b'r').count() as usize;
                 let base_index = pair.first_inner()?.as_str().parse()?;
@@ -30,8 +29,12 @@ impl<'i> AstNode<'i, Rule, MypsParser, MypsParserError> for Dev {
                 let hash = pair.first_inner()?.as_str().parse()?;
                 Ok(Self::Batch(hash))
             }
+            Rule::dev_id => {
+                let index = pair.first_inner()?.try_into_ast()?;
+                Ok(Self::Indexed(index))
+            }
             Rule::var => Ok(Self::Var(pair.as_str().into())),
-            _ => return Err(MypsParserError::wrong_rule("a device", pair)),
+            _ => return Err(MypsLexerError::wrong_rule("a device", pair)),
         }
     }
 }
@@ -39,15 +42,22 @@ impl<'i> AstNode<'i, Rule, MypsParser, MypsParserError> for Dev {
 impl Display for Dev {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Dev::Lit(base, num_indirections) => {
+            Self::Lit(b, i) => {
                 write!(f, "d")?;
-                for _ in 0..*num_indirections {
+                for _ in 0..*i {
                     write!(f, "r")?;
                 }
-                write!(f, "{}", base)
+                write!(f, "{}", i)
             },
-            Dev::Batch(hash) => write!(f, "{}", hash),
-            Dev::Var(v) => write!(f, "{}", v),
+            Self::Indexed(id) => {
+                write!(f, "d{}", id)
+            },
+            Self::Batch(hash) => {
+                write!(f, "{}", hash)
+            },
+            Self::Var(var) => {
+                write!(f, "{}", var)
+            },
         }
     }
 }

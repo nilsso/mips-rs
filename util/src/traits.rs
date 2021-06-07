@@ -30,9 +30,14 @@ where
 /// and [`Pairs`](`pest::iterators::Pairs`).
 pub trait FirstInner<'i, R>
 where
+    Self: Sized,
     R: RuleType,
 {
     fn first_inner(self) -> Result<Pair<'i, R>, AstError>;
+
+    fn first_inner_unchecked(self) -> Pair<'i, R> {
+        self.first_inner().unwrap()
+    }
 }
 
 impl<'i, R> NextPair<'i, R> for Pairs<'i, R>

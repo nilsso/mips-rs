@@ -2,13 +2,7 @@
 use lazy_static::lazy_static;
 use pest::prec_climber::{Assoc, Operator, PrecClimber};
 
-use crate::ast_includes::*;
-
-pub mod l_value;
-pub mod operator;
-pub mod r_value;
-
-use crate::ast::{BinaryOp, UnaryOp, RValue, Num};
+use crate::superprelude::*;
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum Expr {
@@ -94,7 +88,7 @@ impl Expr {
     }
 }
 
-impl<'i> AstNode<'i, Rule, MypsParser, MypsParserError> for Expr {
+impl<'i> AstNode<'i, Rule, MypsParser, MypsLexerError> for Expr {
     type Output = Self;
 
     // expr = _{ u_expr | b_expr | r_value }
@@ -104,7 +98,7 @@ impl<'i> AstNode<'i, Rule, MypsParser, MypsParserError> for Expr {
     //     b_expr = { r_value ~ (b_op ~ r_value)+ }
     const RULE: Rule = Rule::expr;
 
-    fn try_from_pair(pair: Pair<Rule>) -> MypsParserResult<Self> {
+    fn try_from_pair(pair: Pair<Rule>) -> MypsLexerResult<Self> {
         match pair.as_rule() {
             Rule::u_expr => {
                 let mut pairs = pair.into_inner();
@@ -121,28 +115,10 @@ impl<'i> AstNode<'i, Rule, MypsParser, MypsParserError> for Expr {
                 Ok(Expr::ternary(cond, if_t, if_f))
             }
             Rule::r_value => Ok(Self::rvalue(pair.try_into_ast()?)),
-            _ => return Err(MypsParserError::wrong_rule("an r-value expression", pair)),
+            _ => return Err(MypsLexerError::wrong_rule("an r-value expression", pair)),
         }
     }
 }
-
-impl Display for Expr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use Expr::*;
-
-        match self {
-            RValue(rv) => write!(f, "{}", rv),
-            Unary { op, rhs } => write!(f, "({}{})", op, rhs),
-            Binary { op, lhs, rhs } => write!(f, "({}{}{})", lhs, op, rhs),
-            Ternary { cond, if_t, if_f } => write!(f, "({}?{}:{})", cond, if_t, if_f),
-        }
-    }
-}
-
-// impl DisplayMips for Expr {
-//     fn fmt_mips(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//     }
-// }
 
 // Operator precedence climber
 lazy_static! {

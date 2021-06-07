@@ -1,6 +1,4 @@
-use std::{fmt, fmt::Display};
-
-use crate::ast_includes::*;
+use crate::superprelude::*;
 
 fn bool_to_num(b: bool) -> f64 {
     if b {
@@ -26,16 +24,16 @@ impl UnaryOp {
     }
 }
 
-impl<'i> AstNode<'i, Rule, MypsParser, MypsParserError> for UnaryOp {
+impl<'i> AstNode<'i, Rule, MypsParser, MypsLexerError> for UnaryOp {
     type Output = Self;
 
     const RULE: Rule = Rule::b_op;
 
-    fn try_from_pair(pair: Pair<Rule>) -> MypsParserResult<Self> {
+    fn try_from_pair(pair: Pair<Rule>) -> MypsLexerResult<Self> {
         Ok(match pair.as_rule() {
             Rule::inv => Self::Inv,
             Rule::not => Self::Not,
-            _ => return Err(MypsParserError::wrong_rule("a unary operator", pair)),
+            _ => return Err(MypsLexerError::wrong_rule("a unary operator", pair)),
         })
     }
 }
@@ -91,12 +89,12 @@ impl BinaryOp {
     }
 }
 
-impl<'i> AstNode<'i, Rule, MypsParser, MypsParserError> for BinaryOp {
+impl<'i> AstNode<'i, Rule, MypsParser, MypsLexerError> for BinaryOp {
     type Output = Self;
 
     const RULE: Rule = Rule::b_op;
 
-    fn try_from_pair(pair: Pair<Rule>) -> MypsParserResult<Self> {
+    fn try_from_pair(pair: Pair<Rule>) -> MypsLexerResult<Self> {
         Ok(match pair.as_rule() {
             // Numerical
             Rule::add => Self::Add,
@@ -115,7 +113,7 @@ impl<'i> AstNode<'i, Rule, MypsParser, MypsParserError> for BinaryOp {
             Rule::le => Self::LE,
             Rule::lt => Self::LT,
             Rule::ne => Self::NE,
-            _ => return Err(MypsParserError::wrong_rule("a binary operator", pair)),
+            _ => return Err(MypsLexerError::wrong_rule("a binary operator", pair)),
         })
     }
 }

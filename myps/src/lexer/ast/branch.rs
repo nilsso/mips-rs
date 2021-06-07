@@ -1,17 +1,15 @@
-use std::{fmt, fmt::Display};
-
-use crate::ast::Expr;
-use crate::ast_includes::*;
+use crate::superprelude::*;
 
 #[derive(Debug)]
 pub enum Branch {
     Program,
     Loop,
-    Def(String),
     If(Expr),
     Elif(Expr),
     Else,
     While(Expr),
+    For(String, Int, Int),
+    Def(String),
 }
 
 impl Branch {
@@ -38,38 +36,29 @@ impl Branch {
     }
 }
 
-impl<'i> AstNode<'i, Rule, MypsParser, MypsParserError> for Branch {
+impl<'i> AstNode<'i, Rule, MypsParser, MypsLexerError> for Branch {
     type Output = Self;
 
     const RULE: Rule = Rule::branch;
 
-    fn try_from_pair(pair: Pair<Rule>) -> MypsParserResult<Self> {
+    fn try_from_pair(pair: Pair<Rule>) -> MypsLexerResult<Self> {
         #[rustfmt::skip]
         match pair.as_rule() {
             Rule::branch       => pair.first_inner()?.try_into_ast(),
             Rule::branch_loop  => Ok(Branch::Loop),
-            Rule::branch_def   => Ok(Branch::Def(pair.first_inner()?.as_str().into())),
             Rule::branch_if    => Ok(Branch::If(pair.first_inner()?.try_into_ast()?)),
             Rule::branch_elif  => Ok(Branch::Elif(pair.first_inner()?.try_into_ast()?)),
             Rule::branch_else  => Ok(Branch::Else),
             Rule::branch_while => Ok(Branch::While(pair.first_inner()?.try_into_ast()?)),
-            _ => Err(MypsParserError::wrong_rule("a branch", pair)),
-        }
-    }
-}
-
-impl Display for Branch {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use Branch::*;
-
-        match self {
-            Program => write!(f, "(program)"),
-            Loop => write!(f, "loop:"),
-            Def(s) => write!(f, "def {}:", s),
-            If(e) => write!(f, "if {}:", e),
-            Elif(e) => write!(f, "elif {}:", e),
-            Else => write!(f, "else:"),
-            While(e) => write!(f, "while {}:", e),
+            Rule::branch_for   => {
+                let mut pairs = pair.into_inner();
+                let name = pairs.next_pair()?.as_str().into();
+                let s = pairs.next_pair()?.try_into_ast()?;
+                let e = pairs.next_pair()?.try_into_ast()?;
+                Ok(Branch::For(name, s, e))
+            }
+            Rule::branch_def   => Ok(Branch::Def(pair.first_inner()?.as_str().into())),
+            _ => Err(MypsLexerError::wrong_rule("a branch", pair)),
         }
     }
 }

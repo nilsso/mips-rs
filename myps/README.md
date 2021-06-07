@@ -3,6 +3,8 @@ MYPS Lexer
 
 ## Notes and todo
 
+* Move ALL parser AST stuff into the lexer. The lexer will be responsible for constructing the AST
+    while at the same time validating the pairs.
 * Probably should move all mathematic reductions from the parser to the lexer,
     where constant replacements can be done at the same time.
 * Essentially all branches need to check whether or not a return line is necessary
@@ -14,6 +16,19 @@ MYPS Lexer
     * `bdseal`
     * `brdns`
     * `brdse`
+* Consider undo-ing the passing down of comments to the translator.
+* Add function definitions and calls to grammar
+    * `yield()`, `hcf()`, `sleep(n)`
+    * Starting consider how to do something like:
+        ```
+        def dump(pump, analyzer):
+            while analyzer.TotalMoles > 0:
+                pump.On = True
+                yield()
+            pump.On = False
+        ```
+
+        Like `UnitArg`?
 
 ## Specifications?
 
