@@ -81,6 +81,7 @@ pub fn lex(mut pairs: Pairs<Rule>) -> MypsLexerResult<(Item, AliasTable)> {
 
     // for Line { indent, stmt, comment } in program_ast.lines.into_iter() {
     for (indent, item_pair, comment_opt) in items.into_iter() {
+        // println!("{} {} {:?}", indent, curr_indent, item_pair.as_rule());
         // Handle indentation
         if expect_indent {
             // Expecting increase in indent because previous line was a branch marker
@@ -105,10 +106,12 @@ pub fn lex(mut pairs: Pairs<Rule>) -> MypsLexerResult<(Item, AliasTable)> {
                     head.items.push(Item::block(block, block_deps, comment_opt));
                     indent_stack.pop();
                 }
-                if indent != *indent_stack.last().unwrap() {
+                curr_indent = *indent_stack.last().unwrap();
+                if indent != curr_indent {
                     // If now the item and stack levels are different,
                     // this item level was never on the stack before
                     return Err(MypsLexerError::wrong_indent(curr_indent, indent));
+                } else {
                 }
             }
         }
@@ -118,24 +121,26 @@ pub fn lex(mut pairs: Pairs<Rule>) -> MypsLexerResult<(Item, AliasTable)> {
                 let branch = item_pair.try_into_ast()?;
                 let mut dependencies = HashSet::new();
                 match &branch {
+                    Branch::Loop => {},
                     Branch::If(expr) | Branch::Elif(expr) | Branch::While(expr) => {
                         analyze_expr_helper(&expr, &alias_table, &mut dependencies)?;
                     }
-                    Branch::For(_, s, e) => {
-                        if let Int::Var(s_var) = s {
-                            dependencies.insert(s_var.clone());
-                        }
-                        if let Int::Var(e_var) = e {
-                            dependencies.insert(e_var.clone());
+                    Branch::For(name, s, e, step_opt) => {
+                        alias_table.insert(name.clone(), Alias::Var);
+                        analyze_expr_helper(&s, &alias_table, &mut dependencies)?;
+                        analyze_expr_helper(&e, &alias_table, &mut dependencies)?;
+                        if let Some(step) = &step_opt {
+                            analyze_expr_helper(step, &alias_table, &mut dependencies)?;
                         }
                     }
                     Branch::Def(name) => {
                         // TODO: Add function to alias_table
                     }
-                    _ => {}
+                    _ => { unreachable!("{:?}", branch) }
                 }
                 let block = Block::new(branch);
                 blocks.push((block, dependencies, comment_opt));
+                expect_indent = true;
             }
             Rule::stmt => {
                 let stmt = item_pair.try_into_ast()?;

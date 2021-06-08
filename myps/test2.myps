@@ -1,6 +1,0 @@
-loop:
-    for i in 0..6:
-        do_something()
-
-def do_something:
-    x = d(i).Setting

@@ -127,7 +127,7 @@ branch = {
     branch_elif  = !{ "elif" ~ expr }
     branch_else  = !{ "else" }
     branch_while = !{ "while" ~ expr }
-    branch_for   = !{ "for" ~ var ~ "in" ~ int ~ ".." ~ int }
+    branch_for   = !{ "for" ~ var ~ "in" ~ expr ~ ":" ~ expr ~ (":" ~ expr)? }
     branch_def   = !{ "def" ~ var }
 
 /* A statement */

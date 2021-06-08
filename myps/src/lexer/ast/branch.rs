@@ -8,7 +8,7 @@ pub enum Branch {
     Elif(Expr),
     Else,
     While(Expr),
-    For(String, Int, Int),
+    For(String, Expr, Expr, Option<Expr>),
     Def(String),
 }
 
@@ -52,10 +52,11 @@ impl<'i> AstNode<'i, Rule, MypsParser, MypsLexerError> for Branch {
             Rule::branch_while => Ok(Branch::While(pair.first_inner()?.try_into_ast()?)),
             Rule::branch_for   => {
                 let mut pairs = pair.into_inner();
-                let name = pairs.next_pair()?.as_str().into();
+                let i = pairs.next_pair()?.as_str().into();
                 let s = pairs.next_pair()?.try_into_ast()?;
                 let e = pairs.next_pair()?.try_into_ast()?;
-                Ok(Branch::For(name, s, e))
+                let step = pairs.next().map(Expr::try_from_pair).transpose()?;
+                Ok(Branch::For(i, s, e, step))
             }
             Rule::branch_def   => Ok(Branch::Def(pair.first_inner()?.as_str().into())),
             _ => Err(MypsLexerError::wrong_rule("a branch", pair)),

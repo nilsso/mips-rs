@@ -1,0 +1,4 @@
+x = 0
+for i in 1:11: # sum the first ten evens
+    x = x + i * 2
+

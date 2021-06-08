@@ -60,14 +60,24 @@ impl AliasTable {
     }
 
     pub fn lookup(&self, k: &String) -> MypsLexerResult<&Alias> {
-        self.get(k).ok_or(MypsLexerError::undefined_alias(k))
+        // self.get(k).ok_or(MypsLexerError::undefined_alias(k))
+        if let Some(a) = self.get(k) {
+            Ok(a)
+        } else {
+            let err = MypsLexerError::undefined_alias(k);
+            unreachable!("{:?}", err);
+        }
     }
 
     pub fn validate_dev(&self, k: &String) -> MypsLexerResult<()> {
         let a = self.lookup(k)?;
         match a {
             Alias::Dev(..) | Alias::Var => Ok(()),
-            _ => Err(MypsLexerError::wrong_alias("a device", &a))
+            _ => {
+                let err = MypsLexerError::wrong_alias("a device", &a);
+                unreachable!("{:?}", err);
+                // Err(err)
+            }
         }
     }
 
@@ -75,7 +85,11 @@ impl AliasTable {
         let a = self.lookup(k)?;
         match a {
             Alias::Int(_) | Alias::Var => Ok(()),
-            _ => Err(MypsLexerError::wrong_alias("an int", &a)),
+            _ => {
+                let err = MypsLexerError::wrong_alias("an int", &a);
+                unreachable!("{:?}", err);
+                // Err(err)
+            },
         }
     }
 
@@ -83,7 +97,11 @@ impl AliasTable {
         let a = self.lookup(k)?;
         match a {
             Alias::Num(_) | Alias::Var => Ok(()),
-            _ => Err(MypsLexerError::wrong_alias("a num", &a)),
+            _ => {
+                let err = MypsLexerError::wrong_alias("a num", &a);
+                unreachable!("{:?}", err);
+                // Err(err)
+            },
         }
     }
 
