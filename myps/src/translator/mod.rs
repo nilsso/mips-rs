@@ -1,5 +1,5 @@
 #![allow(unused_imports)]
-// #![allow(unused_variables)]
+#![allow(unused_variables)]
 use std::collections::HashMap;
 use std::{
     fmt,
@@ -110,7 +110,7 @@ impl Display for UnitDev {
                 }
                 write!(f, "{}", b)
             }
-            Self::Indexed(_id) => {
+            Self::Indexed(id) => {
                 unreachable!()
                 // TODO: Match id; if int, then d?; if mem then dr?
                 // match
@@ -202,12 +202,12 @@ pub enum UnitExpr {
 
     BRNE(Mem, Mem, Mem),
 
-    SNE(UnitVar, Mem, Mem),
+    SNE(UnitMem, Mem, Mem),
 
-    Add(UnitVar, Mem, Mem),
-    Sub(UnitVar, Mem, Mem),
-    Mul(UnitVar, Mem, Mem),
-    Div(UnitVar, Mem, Mem),
+    Add(UnitMem, Mem, Mem),
+    Sub(UnitMem, Mem, Mem),
+    Mul(UnitMem, Mem, Mem),
+    Div(UnitMem, Mem, Mem),
 
     // move r? a(r?|num)
     Alias(UnitAlias, Dev),
@@ -216,14 +216,14 @@ pub enum UnitExpr {
     Dummy,
 }
 
-// impl UnitExpr {
-//     pub fn lead_unit_mem_mut(&mut self) -> Option<&mut UnitMem> {
-//         match self {
-//             Self::Add(um, ..) => Some(um),
-//             _ => unreachable!("{:?}", self),
-//         }
-//     }
-// }
+impl UnitExpr {
+    pub fn lead_unit_mem_mut(&mut self) -> Option<&mut UnitMem> {
+        match self {
+            Self::Add(um, ..) => Some(um),
+            _ => unreachable!("{:?}", self),
+        }
+    }
+}
 
 impl Display for UnitExpr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -339,7 +339,7 @@ impl Translator {
                     Dev::Indexed(id) => {
                         let id = match id {
                             Int::Lit(n) => Mem::Num(n as f64),
-                            Int::Var(_var) => {
+                            Int::Var(var) => {
                                 unreachable!()
                                 // TODO
                                 // Mem::Unit(UnitMem::Var(UnitVar(var.clone()))),
@@ -348,7 +348,7 @@ impl Translator {
                         UnitDev::Indexed(id)
                     }
                     Dev::Var(k) => self.lookup_dev(&k).into(),
-                    Dev::Batch(_hash) => unreachable!(),
+                    Dev::Batch(hash) => unreachable!(),
                 };
                 let var = var_opt.unwrap_or_else(|| self.next_var());
                 let unit_expr = UnitExpr::L(UnitMem::Var(var), dev, param);
@@ -379,17 +379,16 @@ impl Translator {
             } => {
                 let mut depth = 0;
                 // We need a var to store the result of the operation:
-                // let var = UnitMem::Var(if let Some(var) = var_opt {
-                //     // If a var was provided then it is used and we don't add one to the depth,
-                //     // because the expression was part of an l-value r-value assignment.
-                //     var
-                // } else {
-                //     // Else this expression requires a placeholder mem.
-                //     // We get the next var and add one to the depth
-                //     depth += 1;
-                //     self.next_var()
-                // });
-                let var = self.next_var();
+                let var = UnitMem::Var(if let Some(var) = var_opt {
+                    // If a var was provided then it is used and we don't add one to the depth,
+                    // because the expression was part of an l-value r-value assignment.
+                    var
+                } else {
+                    // Else this expression requires a placeholder mem.
+                    // We get the next var and add one to the depth
+                    depth += 1;
+                    self.next_var()
+                });
                 // Translate the lhs and rhs expressions.
                 // If they are num r-values the the depth is zero and the.
                 let (lhs, d_l) = self.translate_expr(lhs, None, None);
@@ -404,7 +403,7 @@ impl Translator {
                     _ => unreachable!("{:?}", op),
                 };
                 self.units.push(Unit::new(unit_expr, comment));
-                (Mem::Unit(UnitMem::Var(var)), depth + 1)
+                (Mem::Unit(var), depth + 1)
             }
             // Expr::Ternary { cond, if_t, if_f } => {
             // },
@@ -467,7 +466,7 @@ impl Translator {
                             // Convert the final condition expression unit (a variable selection
                             // expresson) into an equivalent branching expression unit.
                             let cond_expr = match self.units[i].unit_expr {
-                                UnitExpr::SNE(_r, a, b) => UnitExpr::BRNE(a, b, c),
+                                UnitExpr::SNE(r, a, b) => UnitExpr::BRNE(a, b, c),
                                 _ => unreachable!("{:?}", self.units[i].unit_expr),
                             };
                             self.units[i].unit_expr = cond_expr;
@@ -521,7 +520,7 @@ impl Translator {
                         } else {
                             Mem::Num(1.0)
                         };
-                        let unit_expr = UnitExpr::Add(i_var, i_mem, step);
+                        let unit_expr = UnitExpr::Add(i_unit, i_mem, step);
                         let unit = Unit::new(unit_expr, None);
                         self.units.push(unit);
                         let unit_expr =
@@ -574,7 +573,7 @@ impl Translator {
                                 let alias = Var::DevNet(UnitDevNet::Lit(hash));
                                 self.var_lookup.insert(a, alias);
                             }
-                            Dev::Var(_v) => {
+                            Dev::Var(v) => {
                                 unreachable!();
                             }
                         }
@@ -585,15 +584,6 @@ impl Translator {
                     // ============================================================================
                     Statement::AssignValue(l, r) => {
                         let mut depth = 0;
-
-                        // let (mem, _, r_depth) = self.translate_rvalue(r, None, Some(l_var));
-                        // match l {
-                        //     LValue::Var(k) => {
-                        //     },
-                        //     LValue::Param(dev, param) => {
-                        //     },
-                        // }
-
 
                         match l {
                             LValue::Var(k) => {
@@ -619,9 +609,7 @@ impl Translator {
                                 depth += r_depth;
                             }
                             LValue::Param(dev, param) => {
-                                // let l_var = self.next_var();
-                                let (mem, _, r_depth) =
-                                    self.translate_rvalue(r, None, None);
+                                let (mem, _, r_depth) = self.translate_rvalue(r, None, None);
                                 match dev {
                                     Dev::Var(k) => {
                                         let dev = match self.var_lookup[&k] {
