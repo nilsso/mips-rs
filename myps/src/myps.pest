@@ -15,7 +15,7 @@ num_lit = @{ int_part ~ ("." ~ dec_part)? ~ ((^"e" | ^"E") ~ exp_part)? }
 /* A token string */
 token = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
 
-/* A variable (protects literal device labels as keywords) */
+/* A variable/function name (protects literal device labels as keywords) */
 var = @{ dev_base? ~ token }
 
 /* Integers or floats */
@@ -24,10 +24,10 @@ num = { num_lit | var }
 
 /* A device register (batched or literal, but not a variable) */
 dev = _{ dev_lit | var }
-    dev_lit = _{ dev_id | dev_batch | dev_base }
-        dev_batch = ${ int ~ ".all" }
-        dev_base  = ${ "d" ~ "r"* ~ !".all" ~ int_lit }
-        dev_id    = ${ "d(" ~ int ~ ")" }
+    dev_lit = { dev_self | dev_net | dev_base }
+        dev_self  = @{ "db" }
+        dev_base  = ${ "d" ~ (int_lit | ("(" ~ expr ~ ")")) }
+        dev_net = ${ int ~ ".all" }
 
 /* ============================================================================================== */
 /* L-values and R-values */
@@ -36,18 +36,55 @@ dev = _{ dev_lit | var }
 /* A device parameter */
 param = @{ token }
 
-/* A function call */
-func = ${ var ~ "()" }
-
 /* An l-value
  *
  * An l-value is something which persists beyond an expression; that is, an l-value is a location at
  * which we can store a number. An l-value can be a variable or the parameter of a device (or many
  * devices in the case of the network).
  */
-l_value = _{ l_param | var }
+lv = { var_fix | var | lv_param }
+    var_fix { "fix" ~ var }
     /* A device parameter to write to */
-    l_param = ${ dev ~ "." ~ param }
+    lv_param = ${ dev ~ "." ~ param }
+
+/* Built-in functions which return an r-value */
+rv_func = _{ peek | pop | rv_func_u | rv_func_b }
+    peek = { "peek" ~ "(" ~ ")" }
+    pop  = { "pop"  ~ "(" ~ ")" }
+    rv_func_u = !{ func_u ~ "(" ~ rv ~ )" }
+    rv_func_b = !{ func_b ~ "(" ~ rv ~ "," ~ rv ~ ")" }
+        func_u = _{ abs   | acos | asin | atan  | ceil | cos  | exp |
+                     floor | ln   | rand | round | sin  | sqrt | tan | trunc }
+        func_b = _{ max | min }
+            abs   = { "abs" }
+            acos  = { "acos" }
+            asin  = { "asin" }
+            atan  = { "atan" }
+            ceil  = { "ceil" }
+            cos   = { "cos" }
+            exp   = { "exp" }
+            floor = { "floor" }
+            ln    = { "ln" }
+            max   = { "max" }
+            min   = { "min" }
+            rand  = { "rand" }
+            round = { "round" }
+            sin   = { "sin" }
+            sqrt  = { "sqrt" }
+            tan   = { "tan" }
+            trunc = { "trunc" }
+
+/* An r-value
+ *
+ * An r-value is something which does *not* persist beyond an expression, and ultimately is to be
+ * reduced to a number. An r-value can be a literal number, a value copied from a variable, a value
+ * read from a device parameter, or an expression of any of the previous.
+ */
+rv = _{ dev_lit | num_lit | rv_param | rv_func | "(" ~ expr ~ ")" | var }
+    rv_param = _{ rv_net_param | rv_dev_slot | rv_dev_param }
+        rv_net_param = ${ int ~ "." ~ batch_mode ~ "." ~ param }
+        rv_dev_param = ${ dev ~ "." ~ param }
+        rv_dev_slot  = ${ dev ~ "(" ~ int ~ ")." ~ param }
 
 /* Modes for batch reading a parameter from devices on the network to an r-value */
 batch_mode = _{ batch_avg | batch_sum | batch_min | batch_max }
@@ -57,17 +94,6 @@ batch_mode = _{ batch_avg | batch_sum | batch_min | batch_max }
     batch_min  = { "min" }
     batch_max  = { "max" }
 
-/* An r-value
- *
- * An r-value is something which does *not* persist beyond an expression, and ultimately is to be
- * reduced to a number. An r-value can be a literal number, a value copied from a variable, a value
- * read from a device parameter, or an expression of any of the previous.
- */
-r_value = { r_value_lit | var }
-    r_value_lit = _{ net_param | dev_param | func | "(" ~ expr ~ ")" | num_lit }
-        net_param = ${ int ~ "." ~ batch_mode ~ "." ~ param }
-        dev_param = ${ dev ~ "." ~ param }
-
 /* ============================================================================================== */
 /* Expressions */
 /* ============================================================================================== */
@@ -76,69 +102,74 @@ r_value = { r_value_lit | var }
 op = _{ u_op | b_op }
     /* Unary operators */
     u_op = _{ inv | not }
-        inv = { WHITESPACE* ~ "-" ~ WHITESPACE* }
-        not = { WHITESPACE* ~ "!" ~ WHITESPACE* }
+        inv  = { "-" }
+        not  = { "!" }
     /* Binary math/logical operators */
     b_op = _{ add | sub | mul | div | rem | and | or | xor | eq | ge | gt | le | lt | ne }
         /* Numerical */
-        add = { WHITESPACE* ~ "+" ~ WHITESPACE* }
-        sub = { WHITESPACE* ~ "-" ~ WHITESPACE* }
-        mul = { WHITESPACE* ~ "*" ~ WHITESPACE* }
-        div = { WHITESPACE* ~ "/" ~ WHITESPACE* }
-        rem = { WHITESPACE* ~ "%" ~ WHITESPACE* }
+        add = { "+" }
+        sub = { "-" }
+        mul = { "*" }
+        div = { "/" }
+        rem = { "%" }
         /* Logical */
-        and = @{ WHITESPACE+ ~ "and" ~ WHITESPACE+ }
-        or  = @{ WHITESPACE+ ~ "or"  ~ WHITESPACE+ }
-        xor = @{ WHITESPACE+ ~ "xor" ~ WHITESPACE+ }
+        and = { "and" }
+        or  = { "or"  }
+        xor = { "xor" }
         /* Relational */
-        eq = { WHITESPACE* ~ "==" ~ WHITESPACE* }
-        ge = { WHITESPACE* ~ ">=" ~ WHITESPACE* }
-        gt = { WHITESPACE* ~ ">"  ~ WHITESPACE* }
-        le = { WHITESPACE* ~ "<=" ~ WHITESPACE* }
-        lt = { WHITESPACE* ~ "<"  ~ WHITESPACE* }
-        ne = { WHITESPACE* ~ "!=" ~ WHITESPACE* }
+        eq  = { "==" }
+        ge  = { ">=" }
+        gt  = { ">"  }
+        le  = { "<=" }
+        lt  = { "<"  }
+        ne  = { "!=" }
 
 /* An expression */
-expr = _{ t_expr | b_expr | u_expr | r_value }
+expr = _{ t_expr | b_expr | u_expr | rv }
     /* A unary expression */
-    u_expr = ${ u_op ~ r_value }
+    u_expr = { u_op ~ rv }
     /* A binary expression */
-    b_expr = ${ r_value ~ (b_op ~ r_value)+ }
+    b_expr = { rv ~ (b_op ~ rv)+ }
     /* A ternary expression (i.e. MIPS `select`) */
-    t_expr = { r_value ~ "?" ~ r_value ~ ":" ~ r_value }
+    t_expr = { rv ~ "?" ~ rv ~ ":" ~ rv }
 
 /* ============================================================================================== */
 /* Program and statements */
 /* ============================================================================================== */
 
-/* A branch */
-branch = {
-    ( branch_loop |
-      branch_if |
-      branch_elif |
-      branch_else |
-      branch_while |
-      branch_for |
-      branch_def
-    ) ~ ":"
-}
-    branch_loop  = !{ "loop" }
-    branch_if    = !{ "if" ~ expr }
-    branch_elif  = !{ "elif" ~ expr }
-    branch_else  = !{ "else" }
-    branch_while = !{ "while" ~ expr }
-    branch_for   = !{ "for" ~ var ~ "in" ~ expr ~ ":" ~ expr ~ (":" ~ expr)? }
-    branch_def   = !{ "def" ~ var }
-
 /* A statement */
-stmt = { assign_alias | assign_value | func }
-    assign_alias = !{ var ~ "=" ~ dev_lit ~ !("." ~ param)}
-    assign_value = !{ l_value ~ "=" ~ expr }
+stmt = { stmt_assign_op | stmt_assign_value | stmt_func }
+    stmt_assign_value = { (lv ~ ",")* ~ lv ~ "=" ~ (expr ~ ",")* ~ expr }
+    stmt_assign_op    = { lv ~ oassign_op~ expr }
+        assign_op = _{ add_assign | sub_assign | mul_assign | div_assign | rem_assign }
+            add_assign = { "+=" }
+            sub_assign = { "-=" }
+            mul_assign = { "*=" }
+            div_assign = { "/=" }
+            rem_assign = { "%=" }
+    stmt_func = { func_nullary | func_unary }
+        func_nullary = { (hcf | sleep | yield | var) ~ "(" ~ ")" }
+            hcf = { "hcf" }
+            sleep = { "sleep" }
+            yield = { "yield" }
+        func_unary = { push ~ "(" ~ rv ~ ")" }
+            push = { "push" }
 
-line = { empty | (indent* ~ item ~ WHITESPACE* ~ comment? ~ NEWLINE) }
+/* A branch */
+branch = { ( branch_loop | branch_if    | branch_elif |
+             branch_else | branch_while | branch_for  | branch_def ) ~ ":" }
+    branch_loop  = { "loop" }
+    branch_if    = { "if" ~ expr }
+    branch_elif  = { "elif" ~ expr }
+    branch_else  = { "else" }
+    branch_while = { "while" ~ expr }
+    branch_for   = { "for" ~ var ~ "in" ~ "(" ~ expr ~ ":" ~ expr ~ (":" ~ expr)? ~ ")" }
+    branch_def   = { "def" ~ var }
+
+line = ${ empty | (indent* ~ item ~ WHITESPACE* ~ comment? ~ NEWLINE) }
     empty = { WHITESPACE* ~ WHITESPACE* ~ COMMENT* ~ NEWLINE }
     indent = { "    " }
-    item = { branch | stmt }
+    item = !{ branch | stmt } /* NOTE: Non-atomic starts here */
 
 program = ${
     SOI ~
@@ -149,6 +180,3 @@ program = ${
 comment = @{ COMMENT+ }
 COMMENT = _{ "#" ~ (!NEWLINE ~ ANY)* }
 WHITESPACE = _{ " " }
-
-/* For tests */
-if_line = _{ SOI ~ branch_if ~ NEWLINE }

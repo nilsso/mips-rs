@@ -1,6 +1,1 @@
-sensor = d0
-H0     = 90
-panels = -2045627372.all
-loop:
-    panels.Horizontal = H0 - sensor.Horizontal
-    panels.Vertical = (sensor.Vertical - 75) / 1.5
+y = 1 + 2

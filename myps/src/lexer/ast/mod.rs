@@ -1,14 +1,17 @@
-mod dev;
-pub use dev::Dev;
-
 mod int;
 pub use int::Int;
 
 mod num;
 pub use num::Num;
 
+mod dev;
+pub use dev::Dev;
+
+// mod dev_net;
+// pub use dev_net::DevNet;
+
 mod r_value;
-pub use r_value::{Mode, RValue};
+pub use r_value::{Mode, RValue, RValueReturn};
 
 mod l_value;
 pub use l_value::LValue;

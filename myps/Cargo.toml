@@ -8,3 +8,6 @@ util = { path = "../util" }
 pest = "*"
 pest_derive = "*"
 lazy_static = "*"
+petgraph = "*"
+itertools = "*"
+

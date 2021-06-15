@@ -1,6 +1,6 @@
-a = 1
-b = 1
-for i in 0:10:
+fix a = 1
+fix b = 1
+for i in (0:10):
     c = a + b
     a = b
     b = c

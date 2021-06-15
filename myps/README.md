@@ -3,19 +3,14 @@ MYPS Lexer
 
 ## Notes and todo
 
-* Move ALL parser AST stuff into the lexer. The lexer will be responsible for constructing the AST
-    while at the same time validating the pairs.
-* Probably should move all mathematic reductions from the parser to the lexer,
-    where constant replacements can be done at the same time.
-* Essentially all branches need to check whether or not a return line is necessary
-    (that is, to distinguish between `j/jr` and `jal`)
-* Branching statements need to cover:
-    * `bdns` - Branch if device not set
-    * `bdnsal` - Branch if 
-    * `bdse`
-    * `bdseal`
-    * `brdns`
-    * `brdse`
+* Refactor lexer into a struct. Need to add called function names to the list;
+    too many mutable references floating around in the lexer function.
+* Tighten up error variant names (i.e. UndefinedAlias versus FuncUndefined)
+* Add back in MYPS functions `pow`, `ln` and `log` and have these expand to MIPS `exp` and `log`
+    composite expressions.
+* Re-implement functions
+* Add function definition checking at the end of the lexer. For each call, add the function name
+    to a set, then at the end of lexing check if every name in the set was defined.
 * Consider undo-ing the passing down of comments to the translator.
 * Add function definitions and calls to grammar
     * `yield()`, `hcf()`, `sleep(n)`

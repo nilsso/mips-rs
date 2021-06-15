@@ -1,0 +1,7 @@
+stack_size = 50
+loop:
+    for i in (0:6):
+        quantity = d(i).Quantity * stack_size
+        i += 1
+        d(i).Setting = quantity
+    yield()

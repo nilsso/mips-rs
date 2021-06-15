@@ -1,37 +1,26 @@
 use crate::superprelude::*;
 
-#[derive(Debug)]
+///
+///
+/// Tuple variants `If` and `Elif` have an `usize` indexing the if-elif-else chain they are a
+/// part of.
+#[derive(Clone, Debug)]
 pub enum Branch {
     Program,
     Loop,
-    If(Expr),
-    Elif(Expr),
-    Else,
+    If(usize, Expr),
+    Elif(usize, Expr),
+    Else(usize),
     While(Expr),
     For(String, Expr, Expr, Option<Expr>),
-    Def(String),
+    Def(String, Vec<String>),
 }
 
 impl Branch {
-    pub fn def(&self) -> Option<&String> {
-        if let Branch::Def(d) = self {
-            Some(d)
-        } else {
-            None
-        }
-    }
-
-    pub fn expr(&self) -> Option<&Expr> {
+    pub fn is_if(&self) -> bool {
         match self {
-            Branch::If(e) | Branch::Elif(e) | Branch::While(e) => Some(e),
-            _ => None,
-        }
-    }
-
-    pub fn mut_expr(&mut self) -> Option<&mut Expr> {
-        match self {
-            Branch::If(e) | Branch::Elif(e) | Branch::While(e) => Some(e),
-            _ => None,
+            Self::If(..) | Self::Elif(..) => true,
+            _ => false,
         }
     }
 }
@@ -46,9 +35,9 @@ impl<'i> AstNode<'i, Rule, MypsParser, MypsLexerError> for Branch {
         match pair.as_rule() {
             Rule::branch       => pair.first_inner()?.try_into_ast(),
             Rule::branch_loop  => Ok(Branch::Loop),
-            Rule::branch_if    => Ok(Branch::If(pair.first_inner()?.try_into_ast()?)),
-            Rule::branch_elif  => Ok(Branch::Elif(pair.first_inner()?.try_into_ast()?)),
-            Rule::branch_else  => Ok(Branch::Else),
+            Rule::branch_if    => Ok(Branch::If(0, pair.first_inner()?.try_into_ast()?)),
+            Rule::branch_elif  => Ok(Branch::Elif(0, pair.first_inner()?.try_into_ast()?)),
+            Rule::branch_else  => Ok(Branch::Else(0)),
             Rule::branch_while => Ok(Branch::While(pair.first_inner()?.try_into_ast()?)),
             Rule::branch_for   => {
                 let mut pairs = pair.into_inner();
@@ -58,7 +47,12 @@ impl<'i> AstNode<'i, Rule, MypsParser, MypsLexerError> for Branch {
                 let step = pairs.next().map(Expr::try_from_pair).transpose()?;
                 Ok(Branch::For(i, s, e, step))
             }
-            Rule::branch_def   => Ok(Branch::Def(pair.first_inner()?.as_str().into())),
+            Rule::branch_def   => {
+                let mut pairs = pair.into_inner();
+                let name = pairs.next_pair()?.as_str().into();
+                let args = pairs.map(|pair| pair.as_str().into()).collect();
+                Ok(Branch::Def(name, args))
+            },
             _ => Err(MypsLexerError::wrong_rule("a branch", pair)),
         }
     }

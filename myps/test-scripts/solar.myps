@@ -1,0 +1,6 @@
+sensor   = d0
+h_offset = 90 # some multiple of 90
+panels   = -2045627372.all
+loop:
+    panels.Horizontal = sensor.Horizontal + h_offset
+    panels.Vertical = (sensor.Vertical - 75) / 1.5

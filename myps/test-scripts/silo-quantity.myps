@@ -1,0 +1,23 @@
+silo = d0
+display = d1
+
+fix quantity = 0
+fix last_i_occupied = 0
+fix last_o_occupied = 0
+
+loop:
+    i_occupied = silo(0).Occupied
+    if i_occupied != last_i_occupied:
+        last_i_occupied = i_occupied
+        if i_occupied:
+            i_quantity = silo(0).Quantity
+            quantity = quantity + i_quantity
+            display.Setting = quantity
+    o_occupied = silo(1).Occupied
+    if o_occupied != last_o_occupied:
+        last_o_occupied = o_occupied
+        if o_occupied:
+            o_quantity = silo(1).Quantity
+            quantity = quantity - o_quantity
+            display.Setting = quantity
+

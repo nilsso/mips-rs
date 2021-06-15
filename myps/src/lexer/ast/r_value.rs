@@ -40,9 +40,20 @@ impl Display for Mode {
 #[derive(Clone, PartialEq, Debug)]
 pub enum RValue {
     Num(Num),
-    NetParam(Int, Mode, String),
+    Dev(Dev),
     DevParam(Dev, String),
+    NetParam(Dev, Mode, String),
+    DevSlot(Dev, Int, String),
     Expr(Box<Expr>),
+    Func(FunctionCall),
+    Var(String),
+}
+
+#[derive(Clone, Debug)]
+pub enum RValueReturn {
+    Num(Num),
+    Dev(Dev),
+    Var(String),
 }
 
 impl<'i> AstNode<'i, Rule, MypsParser, MypsLexerError> for RValue {
@@ -56,6 +67,9 @@ impl<'i> AstNode<'i, Rule, MypsParser, MypsLexerError> for RValue {
     fn try_from_pair(pair: Pair<Rule>) -> MypsLexerResult<Self> {
         match pair.as_rule() {
             Rule::r_value => pair.first_inner()?.try_into_ast(),
+            Rule::dev_lit => {
+                Ok(Self::Dev(pair.try_into_ast()?))
+            },
             Rule::net_param => {
                 let mut pairs = pair.into_inner();
                 let hash = pairs.next_pair()?.try_into_ast()?;
@@ -69,10 +83,25 @@ impl<'i> AstNode<'i, Rule, MypsParser, MypsLexerError> for RValue {
                 let param = pairs.next_pair()?.as_str().into();
                 Ok(Self::DevParam(dev, param))
             }
+            Rule::dev_slot => {
+                let mut pairs = pair.into_inner();
+                let dev = pairs.next_pair()?.try_into_ast()?;
+                let slot = pairs.next_pair()?.try_into_ast()?;
+                let param = pairs.next_pair()?.as_str().into();
+                Ok(Self::DevSlot(dev, slot, param))
+            }
             Rule::expr | Rule::u_expr | Rule::b_expr | Rule::t_expr => {
                 Ok(Self::Expr(Box::new(pair.try_into_ast()?)))
             }
-            Rule::num_lit | Rule::var => Ok(Self::Num(pair.try_into_ast()?)),
+            Rule::func => {
+                let mut pairs = pair.into_inner();
+                let name = pairs.next_pair()?.as_str();
+                let args = Args::try_from_pair(pairs.next_pair()?)?;
+                Ok(Self::Func(FunctionCall::new(name, args)))
+            }
+            Rule::int | Rule::int_lit => Ok(Self::Num(pair.try_into_ast()?)),
+            Rule::num | Rule::num_lit => Ok(Self::Num(pair.try_into_ast()?)),
+            Rule::var => Ok(Self::Var(pair.as_str().into())),
             _ => return Err(MypsLexerError::wrong_rule("an r-value", pair)),
         }
     }

@@ -2,15 +2,23 @@ use std::collections::HashSet;
 
 use crate::superprelude::*;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum ItemInner {
     Stmt(Statement),
     Block(Block),
 }
 
-#[derive(Debug)]
+impl ItemInner {
+    pub fn is_if(&self) -> bool {
+        match self {
+            Self::Block(block) if block.branch.is_if() => true,
+            _ => false,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct Item {
-    pub(crate) dependencies: HashSet<String>,
     pub(crate) comment: Option<String>,
     pub(crate) item_inner: ItemInner,
 }
@@ -18,29 +26,39 @@ pub struct Item {
 impl Item {
     pub fn new(
         item_inner: ItemInner,
-        dependencies: HashSet<String>,
         comment: Option<String>,
     ) -> Self {
         Self {
-            dependencies,
             comment,
             item_inner,
         }
     }
+
+    pub fn is_if(&self) -> bool {
+        self.item_inner.is_if()
+    }
+
+    pub fn if_elif_else_index(&self) -> Option<usize> {
+        match self.item_inner {
+            ItemInner::Block(Block { branch: Branch::If(id, ..), .. }) => Some(id),
+            ItemInner::Block(Block { branch: Branch::Elif(id, ..), .. }) => Some(id),
+            ItemInner::Block(Block { branch: Branch::Else(id, ..), .. }) => Some(id),
+            _ => None,
+        }
+    }
+
     pub fn block(
         block: Block,
-        dependencies: HashSet<String>,
         comment: Option<String>
     ) -> Self {
-        Self::new(ItemInner::Block(block), dependencies, comment)
+        Self::new(ItemInner::Block(block), comment)
     }
 
     pub fn statement(
         stmt: Statement,
-        dependencies: HashSet<String>,
         comment: Option<String>,
     ) -> Self {
-        Self::new(ItemInner::Stmt(stmt), dependencies, comment)
+        Self::new(ItemInner::Stmt(stmt), comment)
     }
 }
 
@@ -79,7 +97,6 @@ impl Item {
 //                     }
 //                 }
 //                 let item = Item {
-//                     dependencies: HashSet::new(),
 //                     stmt: stmt.unwrap(),
 //                     comment,
 //                 };

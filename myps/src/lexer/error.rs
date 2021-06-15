@@ -1,5 +1,5 @@
 use std::io::Error as IOError;
-use std::num::{ParseIntError, ParseFloatError};
+use std::num::{ParseFloatError, ParseIntError};
 
 use crate::superprelude::*;
 
@@ -20,14 +20,26 @@ pub enum MypsLexerError {
 
     ExpectedIndent(String),
     WrongIndent(String),
+    MisplacedElif(&'static str),
+    MisplacedElse(&'static str),
     BranchStatement(&'static str),
+
+    FuncUndefined(String),
+    FuncWrongNumArgs(String),
 
     Dummy,
 }
 
 pub type MypsLexerResult<T> = Result<T, MypsLexerError>;
 
-impl_from_error!(MypsLexerError, PegError, AstError, IOError, ParseIntError, ParseFloatError);
+impl_from_error!(
+    MypsLexerError,
+    PegError,
+    AstError,
+    IOError,
+    ParseIntError,
+    ParseFloatError
+);
 
 impl MypsLexerError {
     pub fn wrong_rule(expected: &'static str, found: Pair<Rule>) -> Self {
@@ -50,7 +62,26 @@ impl MypsLexerError {
         Self::WrongIndent(format!("Expected indent of {}, found {}", expected, found))
     }
 
+    pub fn misplaced_elif() -> Self {
+        Self::MisplacedElif("Elif blocks must follow an if or elif block")
+    }
+
+    pub fn misplaced_else() -> Self {
+        Self::MisplacedElse("Else blocks must follow an if or elif block")
+    }
+
     pub fn branch_statement() -> Self {
         Self::BranchStatement("Items can't be constructed from branch statements")
+    }
+
+    pub fn func_undefined(name: &String) -> Self {
+        Self::FuncUndefined(format!("Function {} is undefined", name))
+    }
+
+    pub fn func_wrong_num_args(name: &String, expected: usize, found: usize) -> Self {
+        Self::FuncWrongNumArgs(format!(
+            "Function {} expected {} arguments, found {}",
+            name, expected, found
+        ))
     }
 }

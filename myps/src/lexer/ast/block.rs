@@ -1,6 +1,6 @@
 use crate::superprelude::*;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Block {
     pub(crate) branch: Branch,
     pub(crate) items: Vec<Item>,

@@ -2,17 +2,19 @@ use std::collections::HashMap;
 
 use crate::superprelude::*;
 
-#[derive(Debug)]
-pub enum DevAlias {
-    Lit(usize, usize),
-    Indexed(Int),
-    Batch(i64),
-    Var(String),
-}
+// #[derive(Debug)]
+// pub enum DevAlias {
+//     Lit(Box<RValue>),
+//     // Lit(usize, usize),
+//     // Indexed(Int),
+//     Batch(Box<RValue>),
+//     Var(String),
+//     DB,
+// }
 
 #[derive(Debug)]
 pub enum Alias {
-    Dev(DevAlias),
+    Dev(Dev),
     // TODO: Add functions
     Int(i64),
     Num(f64),
@@ -21,7 +23,7 @@ pub enum Alias {
 
 #[derive(Debug)]
 pub struct AliasTable {
-    map: HashMap<String, Alias>,
+    pub(crate) map: HashMap<String, Alias>,
 }
 
 // TODO:
@@ -29,7 +31,10 @@ pub struct AliasTable {
 // - Replace aliases that are defined to be values
 impl AliasTable {
     pub fn new() -> Self {
-        let map = HashMap::new();
+        let mut map = HashMap::new();
+        map.insert("db".into(), Alias::Dev(Dev::DB));
+        // map.insert("ra".into(),
+        // map.insert("sp".into(),
         Self { map }
     }
 
