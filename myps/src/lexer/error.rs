@@ -41,18 +41,20 @@ impl_from_error!(
     ParseFloatError
 );
 
+use std::fmt::Debug;
+
 impl MypsLexerError {
     pub fn wrong_rule(expected: &'static str, found: Pair<Rule>) -> Self {
         Self::WrongRule(format!("Expected {} pair, found {:?}", expected, found))
     }
 
-    pub fn undefined_alias(key: &String) -> Self {
-        Self::UndefinedAlias(format!("Alias {} is undefined", key))
+    pub fn undefined_alias<K: Debug>(k: K) -> Self {
+        Self::UndefinedAlias(format!("Alias {:?} is undefined", k))
     }
 
-    // pub fn wrong_alias(expected: &'static str, found: &Alias) -> Self {
-    //     Self::WrongAlias(format!("Expected {} alias, found {:?}", expected, found))
-    // }
+    pub fn wrong_alias<A: Debug>(expected: &'static str, found: A) -> Self {
+        Self::WrongAlias(format!("Expected {} alias, found {:?}", expected, found))
+    }
 
     pub fn expected_indent(expected: usize) -> Self {
         Self::ExpectedIndent(format!("Expected indent of {} or more", expected))

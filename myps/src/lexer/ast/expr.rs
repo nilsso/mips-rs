@@ -99,7 +99,6 @@ impl<'i> AstNode<'i, Rule, MypsParser, MypsLexerError> for Expr {
     const RULE: Rule = Rule::expr;
 
     fn try_from_pair(pair: Pair<Rule>) -> MypsLexerResult<Self> {
-        println!("EXPR {:#?}", pair);
         match pair.as_rule() {
             Rule::expr => pair.first_inner()?.try_into_ast(),
             Rule::expr_unary => {
@@ -109,9 +108,7 @@ impl<'i> AstNode<'i, Rule, MypsParser, MypsLexerError> for Expr {
                 Ok(Expr::unary(op, rhs))
             }
             Rule::expr_binary => {
-                let pairs = pair.into_inner();
-                println!("EXPR BIN PAIRS {:#?}", pairs);
-                Ok(expr_climb(pairs))
+                Ok(expr_climb(pair.into_inner()))
             },
             Rule::expr_ternary => {
                 let mut pairs = pair.into_inner();
@@ -120,7 +117,9 @@ impl<'i> AstNode<'i, Rule, MypsParser, MypsLexerError> for Expr {
                 let if_f = pairs.next_pair()?.try_into_ast()?;
                 Ok(Expr::ternary(cond, if_t, if_f))
             }
-            Rule::rv => Ok(Self::rvalue(pair.try_into_ast()?)),
+            Rule::rv => {
+                Ok(Self::rvalue(pair.try_into_ast()?))
+            },
             _ => return Err(MypsLexerError::wrong_rule("an r-value expression", pair)),
         }
     }
@@ -151,9 +150,7 @@ lazy_static! {
 
 // Operator precedence climber infix helper
 fn infix(lhs: Expr, op_pair: Pair<Rule>, rhs: Expr) -> Expr {
-    let op = op_pair.into_ast::<BinaryOp>();
-    println!("INFIX {:?} {} {:?}", lhs, op, rhs);
-    Expr::binary(op, lhs, rhs)
+    Expr::binary(op_pair.into_ast(), lhs, rhs)
 }
 
 // Operator precedence climber helper (for binary expressions)

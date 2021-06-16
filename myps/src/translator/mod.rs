@@ -6,7 +6,7 @@ use std::{
     fmt,
     fmt::{Debug, Display},
 };
-use std::convert::TryFrom;
+use std::convert::{TryFrom, TryInto};
 
 use itertools::join;
 
@@ -16,7 +16,7 @@ use crate::superprelude::*;
 // Unit variable (memory register) type
 // ================================================================================================
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct UnitVar(usize);
 
 impl UnitVar {
@@ -31,29 +31,49 @@ impl Display for UnitVar {
     }
 }
 
-impl TryFrom<UnitReturn> for UnitVar {
+impl TryFrom<&UnitVar> for UnitVar {
     type Error = ();
 
-    fn try_from(rtn: UnitReturn) -> Result<Self, ()> {
-        if let UnitReturn::Num(UnitNum::Var(unit_var)) = rtn {
-            Ok(unit_var)
-        } else {
-            Err(())
-        }
+    fn try_from(unit_var: &UnitVar) -> Result<Self, ()> {
+        Ok(*unit_var)
     }
 }
 
-impl TryFrom<UnitNum> for UnitVar {
-    type Error = ();
+macro_rules! impl_unit_var_try_from {
+    ($(($T:ty, [$($variant:path),*$(,)*])),*$(,)*) => {
+        $(
+            impl TryFrom<&$T> for UnitVar {
+                type Error = ();
 
-    fn try_from(unit_num: UnitNum) -> Result<Self, ()> {
-        if let UnitNum::Var(unit_var) = unit_num {
-            Ok(unit_var)
-        } else {
-            Err(())
-        }
-    }
+                fn try_from(other: &$T) -> Result<Self, ()> {
+                    match other {
+                        $(
+                            $variant(inner) => Ok(inner.try_into()?),
+                        )*
+                        _ => Err(()),
+                    }
+                }
+            }
+
+            impl TryFrom<$T> for UnitVar {
+                type Error = ();
+
+                fn try_from(other: $T) -> Result<Self, ()> {
+                    Self::try_from(&other)
+                }
+            }
+        )*
+    };
 }
+
+#[rustfmt::skip]
+impl_unit_var_try_from!(
+    (UnitNum,    [UnitNum::Var]),
+    (UnitDev,    [UnitDev::Var]),
+    (UnitDevNet, [UnitDevNet::Var]),
+    (UnitLine,   [UnitLine::Var]),
+    (UnitReturn, [UnitReturn::Num, UnitReturn::Dev, UnitReturn::Net]),
+);
 
 // ================================================================================================
 // Unit number type
@@ -212,6 +232,7 @@ pub enum UnitReturn {
     Num(UnitNum),
     Dev(UnitDev),
     Net(UnitDevNet),
+    Var(UnitVar),
 }
 
 impl Display for UnitReturn {
@@ -220,28 +241,7 @@ impl Display for UnitReturn {
             Self::Num(num) => write!(f, "{}", num),
             Self::Dev(dev) => write!(f, "{}", dev),
             Self::Net(net) => write!(f, "{}", net),
-        }
-    }
-}
-
-// ================================================================================================
-// Var type
-// ================================================================================================
-
-#[derive(Copy, Clone, Debug)]
-pub enum UnitAlias {
-    Var(UnitVar),
-    Num(UnitNum),
-    Dev(UnitDev),
-    Net(UnitDevNet),
-    // Function(f64),
-}
-
-impl UnitAlias {
-    pub fn try_as_var(&self) -> Option<&UnitVar> {
-        match self {
-            Self::Var(uv) => Some(uv),
-            _ => None,
+            Self::Var(var) => write!(f, "{}", var),
         }
     }
 }
@@ -592,7 +592,7 @@ impl UnitExpr {
 // Unit type
 // ================================================================================================
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Unit {
     unit_expr: UnitExpr,
     comment: Option<String>,
@@ -630,13 +630,93 @@ impl Display for Unit {
     }
 }
 
+impl Debug for Unit {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if let Some(comment) = &self.comment {
+            write!(f, "{:?} ({})", self.unit_expr, comment) 
+        } else {
+            write!(f, "{:?}", self.unit_expr)
+        }
+    }
+}
+
 // ================================================================================================
 // Translator
 // ================================================================================================
+
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub enum UnitAliasKey {
+    Var(UnitVar),
+    String(String),
+}
+
+// TODO: Figure out how to use Deref here
+impl From<String> for UnitAliasKey {
+    fn from(k: String) -> Self {
+        Self::String(k)
+    }
+}
+
+impl From<&String> for UnitAliasKey {
+    fn from(k: &String) -> Self {
+        k.clone().into()
+    }
+}
+
+impl From<UnitVar> for UnitAliasKey {
+    fn from(unit_var: UnitVar) -> Self {
+        Self::Var(unit_var)
+    }
+}
+
+impl From<&UnitVar> for UnitAliasKey {
+    fn from(unit_var: &UnitVar) -> Self {
+        unit_var.clone().into()
+    }
+}
+
+impl Debug for UnitAliasKey {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::String(s) => write!(f, "String({})", s),
+            Self::Var(v)    => write!(f, "Var({:?})", v),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub enum UnitAlias {
+    Var(UnitVar),
+    Num(UnitNum),
+    Dev(UnitDev),
+    Net(UnitDevNet),
+    // Function(f64),
+}
+
+impl UnitAlias {
+    pub fn try_as_var(&self) -> Option<&UnitVar> {
+        match self {
+            Self::Var(uv) => Some(uv),
+            _ => None,
+        }
+    }
+}
+
+impl Debug for UnitAlias {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Var(v)    => write!(f, "Var({:?})", v),
+            Self::Num(n)    => write!(f, "Num({:?})", n),
+            Self::Dev(d)    => write!(f, "Dev({:?})", d),
+            Self::Net(n)    => write!(f, "Net({:?})", n),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Translator {
     pub units: Vec<Unit>,
-    pub aliases: HashMap<String, UnitAlias>,
+    pub aliases: HashMap<UnitAliasKey, UnitAlias>,
     pub var_next_id: usize,
     pub var_lifetimes: Vec<(usize, usize)>,
     pub vars_fixed: Vec<usize>,
@@ -658,6 +738,10 @@ impl Translator {
         }
     }
 
+    fn insert_alias<K: Into<UnitAliasKey>>(&mut self, k: K, alias: UnitAlias) {
+        self.aliases.insert(k.into(), alias);
+    }
+
     fn next_var(&mut self, line: usize) -> UnitVar {
         let var = UnitVar(self.var_next_id);
         self.var_lifetimes.push((line, line));
@@ -665,35 +749,68 @@ impl Translator {
         var
     }
 
-    fn lookup_num(&self, k: &String) -> Option<UnitNum> {
-        let alias = self.aliases[k];
+    fn get_var<K: Into<UnitAliasKey>>(&mut self, k: K, fix: bool, line: usize) -> UnitVar {
+        let unit_var = if fix {
+            self.next_var(line)
+        } else {
+            self
+                .aliases
+                .get(&k.into())
+                .and_then(UnitAlias::try_as_var)
+                .cloned()
+                .unwrap_or_else(|| self.next_var(line))
+        };
+
+        self.update_lifetime_unitvar(&unit_var, line);
+
+        unit_var
+    }
+
+    fn lookup_alias<K: Into<UnitAliasKey>>(&self, k: K) -> MypsLexerResult<&UnitAlias> {
+        let k = k.into();
+        self.aliases.get(&k).ok_or(MypsLexerError::undefined_alias(k))
+    }
+
+    fn lookup_num<K: Into<UnitAliasKey>>(&self, k: K) -> MypsLexerResult<&UnitNum> {
+        let alias = self.lookup_alias(k)?;
         match alias {
-            UnitAlias::Num(unit_num) => Some(unit_num),
+            UnitAlias::Num(unit_num) => Ok(unit_num),
             // UnitAlias::Var(var) => UnitNum::Var(var),
             // _ => unreachable!("{:?}", alias),
-            _ => None,
+            _ => Err(MypsLexerError::wrong_alias("UnitNum", alias)),
         }
     }
 
-    fn lookup_dev(&self, k: &String) -> Option<UnitDev> {
-        let alias = self.aliases[k];
+    fn lookup_dev<K: Into<UnitAliasKey>>(&self, k: K) -> MypsLexerResult<&UnitDev> {
+        let alias = self.lookup_alias(k)?;
         match alias {
-            UnitAlias::Dev(unit_dev) => Some(unit_dev),
+            UnitAlias::Dev(unit_dev) => Ok(unit_dev),
             // UnitAlias::Num(i) => UnitDev::Lit(i as usize),
             // UnitAlias::Var(var) => UnitDev::Var(var),
             // _ => unreachable!("{:?}", alias),
-            _ => None,
+            _ => Err(MypsLexerError::wrong_alias("UnitDev", alias)),
         }
     }
 
-    fn lookup_dev_net(&self, k: &String) -> Option<UnitDevNet> {
-        let alias = self.aliases[k];
+    fn lookup_dev_net<K: Into<UnitAliasKey>>(&self, k: K) -> MypsLexerResult<&UnitDevNet> {
+        let alias = self.lookup_alias(k)?;
         match alias {
-            UnitAlias::Net(unit_dev_net) => Some(unit_dev_net),
+            UnitAlias::Net(unit_dev_net) => Ok(unit_dev_net),
             // UnitAlias::Num(i) => UnitDevNet::Lit(i as i64),
             // UnitAlias::Var(var) => UnitDevNet::Var(var),
             // _ => unreachable!("{:?}", alias),
-            _ => None,
+            _ => Err(MypsLexerError::wrong_alias("UnitDevNet", alias)),
+        }
+    }
+
+    fn lookup_var<K: Into<UnitAliasKey>>(&self, k: K) -> MypsLexerResult<&UnitVar> {
+        let alias = self.lookup_alias(k)?;
+        match alias {
+            UnitAlias::Var(unit_var) => {
+                // println!("GET VAR {} {}", unit_var, line);
+                Ok(unit_var)
+            },
+            _ => Err(MypsLexerError::wrong_alias("UnitVar", alias)),
         }
     }
 
@@ -739,17 +856,19 @@ impl Translator {
             self.var_next_id,
             &self.var_lifetimes,
             &self.vars_fixed,
-        );
+            );
         for unit in self.units.iter_mut() {
             unit.map_vars(&var_to_reg_map);
         }
     }
 
     fn update_lifetime_s_unitvar(&mut self, var: &UnitVar, line: usize) {
+        println!("UPDATE S LIFETIME {} {}", var, line);
         self.var_lifetimes[var.0].0 = line;
     }
 
     fn update_lifetime_unitvar(&mut self, var: &UnitVar, line: usize) {
+        println!("UPDATE E LIFETIME {} {}", var, line);
         self.var_lifetimes[var.0].1 = line;
     }
 
@@ -765,11 +884,17 @@ impl Translator {
         }
     }
 
+    fn update_lifetime<V: TryInto<UnitVar>>(&mut self, v: V, line: usize) {
+        if let Ok(unit_var) = v.try_into() {
+            self.var_lifetimes[unit_var.0].1 = line;
+        }
+    }
+
     fn translate_int(&self, int: Int) -> UnitNum {
         match int {
             Int::Lit(n) => UnitNum::Lit(n as f64),
             Int::Var(k) => {
-                self.lookup_num(&k).unwrap()
+                self.lookup_num(k).unwrap().clone()
             }
         }
     }
@@ -786,7 +911,7 @@ impl Translator {
                 };
                 (unit_dev, num_depth)
             }
-            Dev::Var(k) => (self.lookup_dev(&k).unwrap(), 0),
+            Dev::Var(k) => (self.lookup_dev(k).unwrap().clone(), 0),
             Dev::DB => (UnitDev::DB, 0),
             _ => unreachable!("{:?}", dev),
         }
@@ -803,7 +928,7 @@ impl Translator {
                 };
                 (unit_dev_net, num_depth)
             }
-            Dev::Var(k) => (self.lookup_dev_net(&k).unwrap(), 0),
+            Dev::Var(k) => (self.lookup_dev_net(k).unwrap().clone(), 0),
             _ => unreachable!("{:?}", dev),
         }
     }
@@ -825,15 +950,15 @@ impl Translator {
         &mut self,
         rvalue: RValue,
         line: usize,
-    ) -> (UnitReturn, usize) {
+        ) -> (UnitReturn, usize) {
         match rvalue {
             RValue::Num(num) => {
                 let num = match num {
                     Num::Lit(n) => UnitNum::Lit(n),
                     Num::Var(k) => {
-                        let num = self.lookup_num(&k).unwrap();
+                        let num = self.lookup_num(k).unwrap();
                         // self.update_lifetime_mem(&mem, line);
-                        num
+                        num.clone()
                     }
                 };
                 (UnitReturn::Num(num), 0)
@@ -861,7 +986,7 @@ impl Translator {
                     return (UnitReturn::Dev(UnitDev::DB), 0);
                 }
                 Dev::Var(k) => {
-                    let alias = self.aliases.get(&k).unwrap();
+                    let alias = self.lookup_alias(k).unwrap();
                     let unit_return = match alias {
                         UnitAlias::Num(..) => unreachable!("{:?}", alias),
                         UnitAlias::Dev(unit_dev) => UnitReturn::Dev(*unit_dev),
@@ -879,7 +1004,7 @@ impl Translator {
                 let unit = Unit::new(unit_expr, None);
                 self.units.push(unit);
                 // self.update_lifetime_s_unitvar(&var, line);
-                return (UnitReturn::Num(var.into()), 1 + dev_depth);
+                (UnitReturn::Num(var.into()), 1 + dev_depth)
             }
             RValue::DevParam(dev, param) => {
                 let (dev, dev_depth) = self.translate_dev(dev, line);
@@ -889,7 +1014,7 @@ impl Translator {
                 let unit = Unit::new(unit_expr, None);
                 self.units.push(unit);
                 // self.update_lifetime_s_unitvar(&var, line);
-                return (UnitReturn::Num(var.into()), 1 + dev_depth);
+                (UnitReturn::Num(var.into()), 1 + dev_depth)
             }
             RValue::DevSlot(dev, slot, param) => {
                 let (dev, dev_depth) = self.translate_dev(dev, line);
@@ -898,28 +1023,32 @@ impl Translator {
                 let unit_expr = UnitExpr::new_ls(var, dev, slot, param);
                 let unit = Unit::new(unit_expr, None);
                 self.units.push(unit);
-                return (UnitReturn::Num(var.into()), 1 + dev_depth);
+                (UnitReturn::Num(var.into()), 1 + dev_depth)
             }
             RValue::Expr(box expr) => {
-                println!("RValue::Expr {:?}", expr);
                 let (unit_num, depth) = self.translate_expr(expr, line);
-                return (UnitReturn::Num(unit_num), depth);
+                (UnitReturn::Num(unit_num), depth)
             } // _ => unreachable!("{:?}", rvalue),
             RValue::Func(func, args) => {
                 unreachable!("{:?}", func)
             }
             RValue::Var(k) => {
-                println!("{:?}", self.aliases);
-                println!("{}", k);
-                let alias = self.aliases.get(&k).unwrap();
-                let unit_return = match alias {
-                    UnitAlias::Num(unit_num) => UnitReturn::Num(*unit_num),
-                    UnitAlias::Dev(unit_dev) => UnitReturn::Dev(*unit_dev),
-                    UnitAlias::Net(unit_dev_net) => UnitReturn::Net(*unit_dev_net),
-                    UnitAlias::Var(..) => unreachable!("{:?}", alias),
-                };
-                (unit_return, 0)
+                let unit_var = *self.lookup_var(k).unwrap();
+                println!("RVALUE::VAR {}", unit_var);
+                self.update_lifetime_unitvar(&unit_var, line);
+                (UnitReturn::Var(unit_var), 0)
+                // (self.reduce_alias(k).unwrap(), 0)
             }
+        }
+    }
+
+    fn reduce_alias<K: Into<UnitAliasKey>>(&self, k: K) -> MypsLexerResult<UnitReturn> {
+        let alias = self.lookup_alias(k.into())?;
+        match alias {
+            UnitAlias::Num(unit_num)     => Ok(UnitReturn::Num(*unit_num)),
+            UnitAlias::Dev(unit_dev)     => Ok(UnitReturn::Dev(*unit_dev)),
+            UnitAlias::Net(unit_dev_net) => Ok(UnitReturn::Net(*unit_dev_net)),
+            UnitAlias::Var(unit_var)     => self.reduce_alias(unit_var),
         }
     }
 
@@ -930,10 +1059,11 @@ impl Translator {
         &mut self,
         expr: Expr,
         line: usize,
-    ) -> (UnitNum, usize) {
+        ) -> (UnitNum, usize) {
         match expr {
-            // Expr::Unary { op, box rhs } => {
-            // },
+            Expr::Unary { op, box rhs } => {
+                unreachable!();
+            },
             Expr::Binary {
                 op,
                 box lhs,
@@ -941,8 +1071,6 @@ impl Translator {
             } => {
                 // In any case, an expression adds one line to the depth
                 let mut depth = 1;
-                // We need a var to store the result of the operation:
-                let var = self.next_var(line);
                 // depth += 1;
                 // Translate the lhs and rhs expressions
                 // If they are num r-values the the depth is zero and the
@@ -981,11 +1109,14 @@ impl Translator {
                         // let line = depth - 1;
                         // Update lifetimes of lhs and rhs vars
                         // let line = depth + line - 1;
-                        let line = line + depth - 1;
-                        self.update_lifetime_s_unitvar(&var, line);
-                        self.update_lifetime_unitvar(&var, line);
-                        self.update_lifetime_num(&lhs, line);
-                        self.update_lifetime_num(&rhs, line);
+                        // let line = line + depth - 1;
+                        // We need a var to store the result of the operation:
+                        let line = line + depth;
+                        let var = self.next_var(line);
+                        // self.update_lifetime_s_unitvar(&var, line);
+                        // self.update_lifetime_unitvar(&var, line);
+                        self.update_lifetime(&lhs, line);
+                        self.update_lifetime(&rhs, line);
                         // Append this expression
                         let unit_expr = match op {
                             BinaryOp::Add => UnitExpr::new_add(var, lhs, rhs),
@@ -1005,23 +1136,28 @@ impl Translator {
                     }
                 }
             }
-            // Expr::Ternary { cond, if_t, if_f } => {
-            // },
-            // Expr::RValue(rv) => {
-            //     self.translate_r_value(rv);
-            // },
+            Expr::Ternary { cond, if_t, if_f } => {
+                unreachable!();
+            },
             Expr::RValue(rv) => {
                 let (rv_rtn, depth) = self.translate_r_value(rv, line);
                 // let line = line - depth;
                 // self.update_lifetime_s_mem(&mem, line);
                 // self.update_lifetime_mem(&mem, line);
-                if let UnitReturn::Num(num) = rv_rtn {
-                    (num, depth)
-                } else {
-                    unreachable!();
+                match rv_rtn {
+                    UnitReturn::Num(num) => (num, depth),
+                    UnitReturn::Var(unit_var) => {
+                        self.update_lifetime_unitvar(&unit_var, line);
+                        (UnitNum::Var(unit_var), depth)
+                    },
+                    _ => unreachable!(),
                 }
+                // if let UnitReturn::Num(num) = rv_rtn {
+                //     (num, depth)
+                // } else {
+                //     unreachable!();
+                // }
             }
-            _ => unreachable!("{:?}", expr),
         }
     }
 
@@ -1044,7 +1180,7 @@ impl Translator {
         cond: Expr,
         comment: Option<String>,
         line: usize,
-    ) -> (usize, UnitNum, usize) {
+        ) -> (usize, UnitNum, usize) {
         let (rtns, mut depth) = self.translate_expr(cond, line);
         let num = UnitNum::try_from(rtns).unwrap();
         if depth == 0
@@ -1053,16 +1189,16 @@ impl Translator {
                 .last()
                 .map(Unit::is_logical_or_select)
                 .unwrap_or(false)
-        {
-            self.units.push(Unit::new(UnitExpr::Dummy, comment));
-            depth += 1;
-        } else {
-            // Else, by replacing the select expresison by a branch
-            // expression, the var that the select expression assigns to
-            // is not needed
-            self.var_next_id -= 1;
-            self.var_lifetimes.pop();
-        }
+                {
+                    self.units.push(Unit::new(UnitExpr::Dummy, comment));
+                    depth += 1;
+                } else {
+                    // Else, by replacing the select expresison by a branch
+                    // expression, the var that the select expression assigns to
+                    // is not needed
+                    self.var_next_id -= 1;
+                    self.var_lifetimes.pop();
+                }
         let i = self.units.len() - 1;
         (i, num, depth)
     }
@@ -1096,7 +1232,6 @@ impl Translator {
     }
 
     fn translate_item(&mut self, item: Item, line: usize) -> usize {
-        println!("TRANSLATE ITEM {:?}", item);
         let Item {
             item_inner,
             comment,
@@ -1222,7 +1357,7 @@ impl Translator {
                         depth += s_depth;
                         // let i_unit = UnitVar::Var(i_var);
                         // Add new "i" var to lookup
-                        self.aliases.insert(i, UnitAlias::Var(i_var));
+                        self.insert_alias(i, UnitAlias::Var(i_var));
                         let i_num = UnitNum::Var(i_var);
                         // (Body)
                         let mut inner_depth = 1 + self.translate_items(items, line + depth);
@@ -1282,7 +1417,7 @@ impl Translator {
         stmt: Statement,
         mut comment: Option<String>,
         line: usize,
-    ) -> usize {
+        ) -> usize {
         match stmt {
             // ============================================================================
             // Assign a new alias
@@ -1292,13 +1427,13 @@ impl Translator {
             //         Dev::Lit(_) => {
             //             let (unit_dev, dev_depth) = self.translate_dev(d, line);
             //             let alias = UnitAlias::Dev(unit_dev);
-            //             self.aliases.insert(a, alias);
+            //             self.insert_alias(a, alias);
             //             dev_depth
             //         },
             //         Dev::Net(_) => {
             //             let (unit_dev_net, dev_depth) = self.translate_dev_net(d, line);
             //             let alias = UnitAlias::Net(unit_dev_net);
-            //             self.aliases.insert(a, alias);
+            //             self.insert_alias(a, alias);
             //             dev_depth
             //         }
             //         Dev::Var(v) => {
@@ -1306,7 +1441,7 @@ impl Translator {
             //         }
             //         Dev::DB => {
             //             let alias = UnitAlias::Dev(UnitDev::DB);
-            //             self.aliases.insert(a, alias);
+            //             self.insert_alias(a, alias);
             //             1
             //         }
             //     }
@@ -1324,7 +1459,7 @@ impl Translator {
                         depth += rv_depth;
                         rv_rtn
                     })
-                    .collect::<Vec<UnitReturn>>();
+                .collect::<Vec<UnitReturn>>();
 
                 for (lv, rv_rtn) in l_values.into_iter().zip(rv_returns) {
                     depth += self.translate_assignment(lv, rv_rtn, comment.take(), line + depth);
@@ -1374,34 +1509,8 @@ impl Translator {
         r_value_rtn: UnitReturn,
         comment: Option<String>,
         line: usize,
-    ) -> usize {
-        println!("TRANSLATE ASN {:?} = {:?}", l_value, r_value_rtn);
+        ) -> usize {
         let mut depth = 0;
-        // let var_opt = l_value.as_var().map(|k| {
-        //     self.aliases
-        //         .get(k)
-        //         .and_then(|alias| {
-        //             match alias {
-        //                 UnitAlias::Var(var) => Some(var),
-        //                 _ => None,
-        //             }
-        //         })
-        //     .copied()
-        //         .unwrap_or_else(|| self.next_var(line))
-        // });
-
-        fn get_var(translator: &mut Translator, k: &String, fix: bool, line: usize) -> UnitVar {
-            if fix {
-                translator.next_var(line)
-            } else {
-                translator
-                    .aliases
-                    .get(k)
-                    .and_then(UnitAlias::try_as_var)
-                    .cloned()
-                    .unwrap_or_else(|| translator.next_var(line))
-            }
-        }
 
         match r_value_rtn {
             UnitReturn::Dev(unit_dev) => {
@@ -1417,26 +1526,43 @@ impl Translator {
                     depth += 1;
                 }
                 let alias = UnitAlias::Dev(unit_dev);
-                self.aliases.insert(k, alias);
+                self.insert_alias(k, alias);
             }
             UnitReturn::Net(unit_dev_net) => {
                 let (k, fix) = match l_value {
-                    LValue::Var(k, fix) => (k, fix),
+                    LValue::Var(k, fix) => (k.clone(), fix),
                     LValue::Param(..) => unreachable!(),
                 };
 
-                let var = get_var(self, &k, fix, line + depth);
+                let var = self.get_var(&k, fix, line + depth);
                 let hash = unit_dev_net.into();
                 if fix {
                     let unit_expr = UnitExpr::new_move(var, hash);
                     depth += 1;
                 }
                 let alias = UnitAlias::Num(hash);
-                self.aliases.insert(k, alias);
+                self.insert_alias(k, alias);
             }
             UnitReturn::Num(unit_num) => {
                 match l_value {
                     LValue::Var(k, fix) => {
+                        if fix {
+                            // If marked fix
+                            // - insert an alias from the var to the number, and
+                            // - insert an alias from the name to the var
+                            let unit_var = self.get_var(k.clone(), fix, line + depth);
+
+                            let unit_expr = UnitExpr::new_move(unit_var, unit_num);
+                            let unit = Unit::new(unit_expr, comment);
+                            self.units.push(unit);
+                            self.insert_alias(unit_var, UnitAlias::Num(unit_num));
+                            self.insert_alias(k, UnitAlias::Var(unit_var));
+                            depth += 1;
+                        } else {
+                            // Else if not marked fix
+                            // - insert an alias from the name to the number
+                            self.insert_alias(k, UnitAlias::Num(unit_num));
+                        }
                         // self.aliases.get(&k);
                     },
                     LValue::Param(dev, param) => {
@@ -1454,7 +1580,7 @@ impl Translator {
                                 UnitExpr::new_sb(unit_dev_net, param, unit_num)
                             },
                             Dev::Var(k) => {
-                                let alias = self.aliases.get(&k);
+                                let alias = self.aliases.get(&k.into());
                                 match alias {
                                     Some(UnitAlias::Dev(unit_dev)) => {
                                         UnitExpr::new_s(*unit_dev, param, unit_num)
@@ -1475,6 +1601,9 @@ impl Translator {
                     }
                 }
             },
+            UnitReturn::Var(unit_var) => {
+                unreachable!();
+            }
         }
         depth
     }

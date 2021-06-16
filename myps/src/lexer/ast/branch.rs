@@ -33,6 +33,7 @@ impl<'i> AstNode<'i, Rule, MypsParser, MypsLexerError> for Branch {
     fn try_from_pair(pair: Pair<Rule>) -> MypsLexerResult<Self> {
         #[rustfmt::skip]
         match pair.as_rule() {
+            Rule::branch  => pair.first_inner()?.try_into_ast(),
             Rule::b_loop  => Ok(Branch::Loop),
             Rule::b_if    => Ok(Branch::If(0, pair.first_inner()?.try_into_ast()?)),
             Rule::b_elif  => Ok(Branch::Elif(0, pair.first_inner()?.try_into_ast()?)),

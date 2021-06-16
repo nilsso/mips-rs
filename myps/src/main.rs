@@ -72,21 +72,17 @@ fn main() {
 
     // LEXER TEST
     let (program_item, lexer) = Lexer::lex(peg.unwrap()).unwrap();
-    println!("{:#?}", program_item);
+    // println!("{:#?}", program_item);
 
     // TRANSLATOR TEST
-    // let mut translator = Translator::translate(program_item);
-    // println!("===");
-    // for (i, unit) in translator.units.iter().enumerate() {
-    //     // println!("{:?}", unit);
-    //     println!("{}: {}", i, unit);
-    // }
+    let mut translator = Translator::translate(program_item);
+    println!("{:#?}", translator);
 
-    // for (i, unit) in translator.units.iter().enumerate() {
-    // //     // println!("{:?}", unit);
-    // //     // println!("{}: {}", i, unit);
-    //     println!("{}", unit);
-    // }
+    for (i, unit) in translator.units.iter().enumerate() {
+    //     // println!("{:?}", unit);
+    //     // println!("{}: {}", i, unit);
+        println!("{}", unit);
+    }
     // println!("# ==========================");
     // print_inteference_graph(&translator);
     // println!("# ==========================");

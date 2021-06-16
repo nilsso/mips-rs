@@ -56,7 +56,7 @@ lv = { var_fix | var | lv_param }
  * read from a device parameter, or an expression of any of the previous.
  */
 rv = { dev_lit | num_lit | rv_param | rv_func | "(" ~ expr ~ ")" | var }
-    rv_param = _{ rv_net_param | rv_dev_slot | rv_dev_param }
+    rv_param = _{ rv_net_param | rv_dev_param | rv_dev_slot }
         rv_net_param = ${ int ~ "." ~ batch_mode ~ "." ~ param }
         rv_dev_param = ${ dev ~ "." ~ param }
         rv_dev_slot  = ${ dev ~ "(" ~ int ~ ")." ~ param }
@@ -116,10 +116,10 @@ expr = { expr_ternary | expr_binary | expr_unary | rv }
     expr_ternary = { rv ~ "?" ~ rv ~ ":" ~ rv }
 
 /* Operators */
-op_u   = { op_inv | op_neg }
+op_u   = _{ op_inv | op_neg }
     op_inv = { "-" }
     op_neg = { "!" }
-op_b   = {
+op_b   = _{
     op_add | op_sub | op_mul | op_div | op_rem |
     op_and | op_or  | op_xor |
     op_eq  | op_ge  | op_gt  | op_le  | op_lt  | op_ne 
@@ -141,7 +141,7 @@ op_b   = {
     op_le = { "<=" }
     op_lt = { "<" }
     op_ne = { "!=" }
-op_asn = { "+=" | "-=" | "*=" | "/=" | "%=" }
+op_asn = _{ "+=" | "-=" | "*=" | "/=" | "%=" }
 
 /* ============================================================================================== */
 /* Program and statements */
@@ -158,7 +158,7 @@ stmt = { stmt_assign_self | stmt_assign_value | stmt_func }
         stmt_func_unary = { ("push" | "sleep") ~ "(" ~ rv ~ ")" }
 
 /* A branch */
-branch = _{ ( b_loop | b_if | b_elif | b_else | b_while | b_for  | b_def ) ~ ":" }
+branch = { ( b_loop | b_if | b_elif | b_else | b_while | b_for  | b_def ) ~ ":" }
     b_loop  = { "loop" }
     b_if    = { "if" ~ expr }
     b_elif  = { "elif" ~ expr }
