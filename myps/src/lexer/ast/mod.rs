@@ -11,7 +11,7 @@ pub use dev::Dev;
 // pub use dev_net::DevNet;
 
 mod r_value;
-pub use r_value::{Mode, RValue, RValueReturn};
+pub use r_value::{Mode, RValue};
 
 mod l_value;
 pub use l_value::LValue;

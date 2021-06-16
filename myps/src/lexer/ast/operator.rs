@@ -27,12 +27,12 @@ impl UnaryOp {
 impl<'i> AstNode<'i, Rule, MypsParser, MypsLexerError> for UnaryOp {
     type Output = Self;
 
-    const RULE: Rule = Rule::b_op;
+    const RULE: Rule = Rule::op_b;
 
     fn try_from_pair(pair: Pair<Rule>) -> MypsLexerResult<Self> {
         Ok(match pair.as_rule() {
-            Rule::inv => Self::Inv,
-            Rule::not => Self::Not,
+            Rule::op_inv => Self::Inv,
+            Rule::op_neg => Self::Not,
             _ => return Err(MypsLexerError::wrong_rule("a unary operator", pair)),
         })
     }
@@ -92,27 +92,27 @@ impl BinaryOp {
 impl<'i> AstNode<'i, Rule, MypsParser, MypsLexerError> for BinaryOp {
     type Output = Self;
 
-    const RULE: Rule = Rule::b_op;
+    const RULE: Rule = Rule::op_b;
 
     fn try_from_pair(pair: Pair<Rule>) -> MypsLexerResult<Self> {
         Ok(match pair.as_rule() {
             // Numerical
-            Rule::add => Self::Add,
-            Rule::sub => Self::Sub,
-            Rule::mul => Self::Mul,
-            Rule::div => Self::Div,
-            Rule::rem => Self::Rem,
+            Rule::op_add => Self::Add,
+            Rule::op_sub => Self::Sub,
+            Rule::op_mul => Self::Mul,
+            Rule::op_div => Self::Div,
+            Rule::op_rem => Self::Rem,
             // Logical
-            Rule::and => Self::And,
-            Rule::or => Self::Or,
-            Rule::xor => Self::Xor,
+            Rule::op_and => Self::And,
+            Rule::op_or => Self::Or,
+            Rule::op_xor => Self::Xor,
             // Relational
-            Rule::eq => Self::EQ,
-            Rule::ge => Self::GE,
-            Rule::gt => Self::GT,
-            Rule::le => Self::LE,
-            Rule::lt => Self::LT,
-            Rule::ne => Self::NE,
+            Rule::op_eq => Self::EQ,
+            Rule::op_ge => Self::GE,
+            Rule::op_gt => Self::GT,
+            Rule::op_le => Self::LE,
+            Rule::op_lt => Self::LT,
+            Rule::op_ne => Self::NE,
             _ => return Err(MypsLexerError::wrong_rule("a binary operator", pair)),
         })
     }

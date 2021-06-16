@@ -71,14 +71,11 @@ fn main() {
     // println!("{:#?}", peg);
 
     // LEXER TEST
-    let program = Lexer::lex(peg.unwrap()).unwrap();
-    println!("{:#?}", program);
+    let (program_item, lexer) = Lexer::lex(peg.unwrap()).unwrap();
+    println!("{:#?}", program_item);
 
     // TRANSLATOR TEST
-    // let translator = Translator::parse_and_translate(&source)?;
     // let mut translator = Translator::translate(program_item);
-    // println!("{:#?}", translator);
-    // println!("{:#?}", translator.branch_tails);
     // println!("===");
     // for (i, unit) in translator.units.iter().enumerate() {
     //     // println!("{:?}", unit);

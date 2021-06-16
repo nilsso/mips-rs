@@ -96,6 +96,7 @@ where
     }
 
     fn from_pair(pair: Pair<R>) -> Self::Output {
+        println!("FROM PAIR {:#?}", pair);
         Self::try_from_pair(pair).unwrap()
     }
 

@@ -37,6 +37,36 @@ impl Display for Mode {
     }
 }
 
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub enum RVFunc {
+    // Nullary
+    Peek,
+    Pop,
+    // Unary
+    Abs,
+    Acos,
+    Asin,
+    Atan,
+    Ceil,
+    Cos,
+    Exp,
+    Floor,
+    Ln,
+    Rand,
+    Round,
+    Sin,
+    Sqrt,
+    Tan,
+    Trunc,
+    // Binary
+    Max,
+    Min,
+}
+
+#[allow(dead_code)]
+pub enum RVFuncBinary {
+}
+
 #[derive(Clone, PartialEq, Debug)]
 pub enum RValue {
     Num(Num),
@@ -45,59 +75,50 @@ pub enum RValue {
     NetParam(Dev, Mode, String),
     DevSlot(Dev, Int, String),
     Expr(Box<Expr>),
-    Func(FunctionCall),
-    Var(String),
-}
-
-#[derive(Clone, Debug)]
-pub enum RValueReturn {
-    Num(Num),
-    Dev(Dev),
+    Func(RVFunc, Vec<RValue>),
     Var(String),
 }
 
 impl<'i> AstNode<'i, Rule, MypsParser, MypsLexerError> for RValue {
     type Output = Self;
 
-    // r_value = { num_lit | net_param | dev_param | "(" ~ expr ~ ")" | var }
-    //     net_param = ${ int ~ "." ~ batch_mode ~ "." ~ param }
-    //     dev_param = ${ dev ~ "." ~ param }
-    const RULE: Rule = Rule::r_value;
+    const RULE: Rule = Rule::rv;
 
     fn try_from_pair(pair: Pair<Rule>) -> MypsLexerResult<Self> {
         match pair.as_rule() {
-            Rule::r_value => pair.first_inner()?.try_into_ast(),
+            Rule::rv => pair.first_inner()?.try_into_ast(),
             Rule::dev_lit => {
                 Ok(Self::Dev(pair.try_into_ast()?))
             },
-            Rule::net_param => {
+            Rule::rv_net_param => {
                 let mut pairs = pair.into_inner();
                 let hash = pairs.next_pair()?.try_into_ast()?;
                 let mode = pairs.next_pair()?.try_into_ast()?;
                 let param = pairs.next_pair()?.as_str().into();
                 Ok(Self::NetParam(hash, mode, param))
             }
-            Rule::dev_param => {
+            Rule::rv_dev_param => {
                 let mut pairs = pair.into_inner();
                 let dev = pairs.next_pair()?.try_into_ast()?;
                 let param = pairs.next_pair()?.as_str().into();
                 Ok(Self::DevParam(dev, param))
             }
-            Rule::dev_slot => {
+            Rule::rv_dev_slot => {
                 let mut pairs = pair.into_inner();
                 let dev = pairs.next_pair()?.try_into_ast()?;
                 let slot = pairs.next_pair()?.try_into_ast()?;
                 let param = pairs.next_pair()?.as_str().into();
                 Ok(Self::DevSlot(dev, slot, param))
             }
-            Rule::expr | Rule::u_expr | Rule::b_expr | Rule::t_expr => {
+            Rule::expr => {
                 Ok(Self::Expr(Box::new(pair.try_into_ast()?)))
             }
-            Rule::func => {
-                let mut pairs = pair.into_inner();
-                let name = pairs.next_pair()?.as_str();
-                let args = Args::try_from_pair(pairs.next_pair()?)?;
-                Ok(Self::Func(FunctionCall::new(name, args)))
+            Rule::rv_func => {
+                unreachable!();
+                // let mut pairs = pair.into_inner();
+                // let name = pairs.next_pair()?.as_str();
+                // let args = Args::try_from_pair(pairs.next_pair()?)?;
+                // Ok(Self::Func(FunctionCall::new(name, args)))
             }
             Rule::int | Rule::int_lit => Ok(Self::Num(pair.try_into_ast()?)),
             Rule::num | Rule::num_lit => Ok(Self::Num(pair.try_into_ast()?)),

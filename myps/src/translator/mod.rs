@@ -31,14 +31,10 @@ impl Display for UnitVar {
     }
 }
 
-impl TryFrom<Vec<UnitReturn>> for UnitVar {
+impl TryFrom<UnitReturn> for UnitVar {
     type Error = ();
 
-    fn try_from(mut rtns: Vec<UnitReturn>) -> Result<Self, ()> {
-        if rtns.len() != 1 {
-            return Err(());
-        }
-        let rtn = rtns.pop().unwrap();
+    fn try_from(rtn: UnitReturn) -> Result<Self, ()> {
         if let UnitReturn::Num(UnitNum::Var(unit_var)) = rtn {
             Ok(unit_var)
         } else {
@@ -93,14 +89,10 @@ impl From<UnitDevNet> for UnitNum {
     }
 }
 
-impl TryFrom<Vec<UnitReturn>> for UnitNum {
+impl TryFrom<UnitReturn> for UnitNum {
     type Error = ();
 
-    fn try_from(mut rtns: Vec<UnitReturn>) -> Result<Self, ()> {
-        if rtns.len() != 1 {
-            return Err(());
-        }
-        let rtn = rtns.pop().unwrap();
+    fn try_from(rtn: UnitReturn) -> Result<Self, ()> {
         if let UnitReturn::Num(unit_num) = rtn {
             Ok(unit_num)
         } else {
@@ -150,14 +142,10 @@ impl Display for UnitDev {
     }
 }
 
-impl TryFrom<Vec<UnitReturn>> for UnitDev {
+impl TryFrom<UnitReturn> for UnitDev {
     type Error = ();
 
-    fn try_from(mut rtns: Vec<UnitReturn>) -> Result<Self, ()> {
-        if rtns.len() != 1 {
-            return Err(());
-        }
-        let rtn = rtns.pop().unwrap();
+    fn try_from(rtn: UnitReturn) -> Result<Self, ()> {
         if let UnitReturn::Dev(unit_dev) = rtn {
             Ok(unit_dev)
         } else {
@@ -203,14 +191,10 @@ impl Display for UnitDevNet {
     }
 }
 
-impl TryFrom<Vec<UnitReturn>> for UnitDevNet {
+impl TryFrom<UnitReturn> for UnitDevNet {
     type Error = ();
 
-    fn try_from(mut rtns: Vec<UnitReturn>) -> Result<Self, ()> {
-        if rtns.len() != 1 {
-            return Err(());
-        }
-        let rtn = rtns.pop().unwrap();
+    fn try_from(rtn: UnitReturn) -> Result<Self, ()> {
         if let UnitReturn::Net(unit_dev_net) = rtn {
             Ok(unit_dev_net)
         } else {
@@ -793,8 +777,8 @@ impl Translator {
     fn translate_dev(&mut self, dev: Dev, line: usize) -> (UnitDev, usize) {
         match dev {
             Dev::Lit(box rvalue) => {
-                let (rtns, num_depth) = self.translate_rvalue(rvalue, line);
-                let num = UnitNum::try_from(rtns).unwrap();
+                let (rtn, num_depth) = self.translate_r_value(rvalue, line);
+                let num = UnitNum::try_from(rtn).unwrap();
                 // let unit_dev = UnitDev
                 let unit_dev = match num {
                     UnitNum::Lit(n) => UnitDev::Lit(n as u64),
@@ -811,7 +795,7 @@ impl Translator {
     fn translate_dev_net(&mut self, dev: Dev, line: usize) -> (UnitDevNet, usize) {
         match dev {
             Dev::Net(box rvalue) => {
-                let (rtns, num_depth) = self.translate_rvalue(rvalue, line);
+                let (rtns, num_depth) = self.translate_r_value(rvalue, line);
                 let num = UnitNum::try_from(rtns).unwrap();
                 let unit_dev_net = match num {
                     UnitNum::Lit(n) => UnitDevNet::Lit(n as i64),
@@ -837,11 +821,11 @@ impl Translator {
     //     }
     // }
 
-    fn translate_rvalue(
+    fn translate_r_value(
         &mut self,
         rvalue: RValue,
         line: usize,
-    ) -> (Vec<UnitReturn>, usize) {
+    ) -> (UnitReturn, usize) {
         match rvalue {
             RValue::Num(num) => {
                 let num = match num {
@@ -852,33 +836,29 @@ impl Translator {
                         num
                     }
                 };
-                (vec![UnitReturn::Num(num)], 0)
+                (UnitReturn::Num(num), 0)
             }
             RValue::Dev(dev) => match dev {
                 Dev::Lit(box id_r_value) => {
-                    let (mut rtn, depth) = self.translate_rvalue(id_r_value, line);
-                    assert_eq!(rtn.len(), 1);
-                    let id_rtn = rtn.pop().unwrap();
+                    let (id_rtn, depth) = self.translate_r_value(id_r_value, line);
                     let unit_dev = match id_rtn {
                         UnitReturn::Num(UnitNum::Lit(n)) => UnitDev::Lit(n as u64),
                         UnitReturn::Num(UnitNum::Var(v)) => UnitDev::Var(v),
                         _ => unreachable!("{:?}", id_rtn),
                     };
-                    (vec![UnitReturn::Dev(unit_dev)], depth)
+                    (UnitReturn::Dev(unit_dev), depth)
                 }
                 Dev::Net(box hash_r_value) => {
-                    let (mut rtn, depth) = self.translate_rvalue(hash_r_value, line);
-                    assert_eq!(rtn.len(), 1);
-                    let hash_rtn = rtn.pop().unwrap();
+                    let (hash_rtn, depth) = self.translate_r_value(hash_r_value, line);
                     let unit_dev_net = match hash_rtn {
                         UnitReturn::Num(UnitNum::Lit(n)) => UnitDevNet::Lit(n as i64),
                         UnitReturn::Num(UnitNum::Var(v)) => UnitDevNet::Var(v),
                         _ => unreachable!("{:?}", hash_rtn),
                     };
-                    (vec![UnitReturn::Net(unit_dev_net)], depth)
+                    (UnitReturn::Net(unit_dev_net), depth)
                 }
                 Dev::DB => {
-                    return (vec![UnitReturn::Dev(UnitDev::DB)], 0);
+                    return (UnitReturn::Dev(UnitDev::DB), 0);
                 }
                 Dev::Var(k) => {
                     let alias = self.aliases.get(&k).unwrap();
@@ -888,7 +868,7 @@ impl Translator {
                         UnitAlias::Net(unit_dev_net) => UnitReturn::Net(*unit_dev_net),
                         UnitAlias::Var(..) => unreachable!("{:?}", alias),
                     };
-                    (vec![unit_return], 0)
+                    (unit_return, 0)
                 }
             },
             RValue::NetParam(dev, mode, param) => {
@@ -899,7 +879,7 @@ impl Translator {
                 let unit = Unit::new(unit_expr, None);
                 self.units.push(unit);
                 // self.update_lifetime_s_unitvar(&var, line);
-                return (vec![UnitReturn::Num(var.into())], 1 + dev_depth);
+                return (UnitReturn::Num(var.into()), 1 + dev_depth);
             }
             RValue::DevParam(dev, param) => {
                 let (dev, dev_depth) = self.translate_dev(dev, line);
@@ -909,7 +889,7 @@ impl Translator {
                 let unit = Unit::new(unit_expr, None);
                 self.units.push(unit);
                 // self.update_lifetime_s_unitvar(&var, line);
-                return (vec![UnitReturn::Num(var.into())], 1 + dev_depth);
+                return (UnitReturn::Num(var.into()), 1 + dev_depth);
             }
             RValue::DevSlot(dev, slot, param) => {
                 let (dev, dev_depth) = self.translate_dev(dev, line);
@@ -918,16 +898,19 @@ impl Translator {
                 let unit_expr = UnitExpr::new_ls(var, dev, slot, param);
                 let unit = Unit::new(unit_expr, None);
                 self.units.push(unit);
-                return (vec![UnitReturn::Num(var.into())], 1 + dev_depth);
+                return (UnitReturn::Num(var.into()), 1 + dev_depth);
             }
             RValue::Expr(box expr) => {
+                println!("RValue::Expr {:?}", expr);
                 let (unit_num, depth) = self.translate_expr(expr, line);
-                return (vec![UnitReturn::Num(unit_num)], depth);
+                return (UnitReturn::Num(unit_num), depth);
             } // _ => unreachable!("{:?}", rvalue),
-            RValue::Func(func_call) => {
-                unreachable!("{:?}", func_call)
+            RValue::Func(func, args) => {
+                unreachable!("{:?}", func)
             }
             RValue::Var(k) => {
+                println!("{:?}", self.aliases);
+                println!("{}", k);
                 let alias = self.aliases.get(&k).unwrap();
                 let unit_return = match alias {
                     UnitAlias::Num(unit_num) => UnitReturn::Num(*unit_num),
@@ -935,7 +918,7 @@ impl Translator {
                     UnitAlias::Net(unit_dev_net) => UnitReturn::Net(*unit_dev_net),
                     UnitAlias::Var(..) => unreachable!("{:?}", alias),
                 };
-                (vec![unit_return], 0)
+                (unit_return, 0)
             }
         }
     }
@@ -1025,16 +1008,14 @@ impl Translator {
             // Expr::Ternary { cond, if_t, if_f } => {
             // },
             // Expr::RValue(rv) => {
-            //     self.translate_rvalue(rv);
+            //     self.translate_r_value(rv);
             // },
             Expr::RValue(rv) => {
-                let (mut rtns, depth) = self.translate_rvalue(rv, line);
-                assert_eq!(rtns.len(), 1);
-                let num_rtn = rtns.pop().unwrap();
+                let (rv_rtn, depth) = self.translate_r_value(rv, line);
                 // let line = line - depth;
                 // self.update_lifetime_s_mem(&mem, line);
                 // self.update_lifetime_mem(&mem, line);
-                if let UnitReturn::Num(num) = num_rtn {
+                if let UnitReturn::Num(num) = rv_rtn {
                     (num, depth)
                 } else {
                     unreachable!();
@@ -1115,6 +1096,7 @@ impl Translator {
     }
 
     fn translate_item(&mut self, item: Item, line: usize) -> usize {
+        println!("TRANSLATE ITEM {:?}", item);
         let Item {
             item_inner,
             comment,
@@ -1225,7 +1207,7 @@ impl Translator {
                         //     }
                         // };
                         // Fix i_var so that it doesn't get overwritten by register optimization
-                        let (s_rtns, s_depth) = self.translate_rvalue(s, line);
+                        let (s_rtns, s_depth) = self.translate_expr(s, line);
                         let s_num = UnitNum::try_from(s_rtns).unwrap();
                         let i_var = UnitVar::try_from(s_num).unwrap();
                         self.vars_fixed.push(i_var.0);
@@ -1245,13 +1227,13 @@ impl Translator {
                         // (Body)
                         let mut inner_depth = 1 + self.translate_items(items, line + depth);
                         // (End value expression)
-                        let (e_rtns, e_depth) = self.translate_rvalue(e, line);
+                        let (e_rtns, e_depth) = self.translate_expr(e, line);
                         let e_num = UnitNum::try_from(e_rtns).unwrap();
                         inner_depth += e_depth;
                         // (Step value expression)
                         let step = if let Some(step_expr) = step_opt {
                             let (step_rtns, step_depth) =
-                                self.translate_rvalue(step_expr, line);
+                                self.translate_expr(step_expr, line);
                             inner_depth += step_depth;
                             UnitNum::try_from(step_rtns).unwrap()
                         } else {
@@ -1335,19 +1317,19 @@ impl Translator {
             Statement::AssignValue(l_values, r_values) => {
                 let mut depth = 0;
 
-                let return_values = r_values
+                let rv_returns = r_values
                     .into_iter()
-                    .flat_map(|r_value| {
-                        let (rv_rtns, rv_depth) = self.translate_rvalue(r_value, depth);
+                    .map(|r_value| {
+                        let (rv_rtn, rv_depth) = self.translate_r_value(r_value, depth);
                         depth += rv_depth;
-                        rv_rtns.into_iter()
+                        rv_rtn
                     })
                     .collect::<Vec<UnitReturn>>();
 
-                for (l_value, return_value) in l_values.into_iter().zip(return_values) {
-                    depth +=
-                        self.translate_assignment(l_value, return_value, comment.take(), line + depth);
+                for (lv, rv_rtn) in l_values.into_iter().zip(rv_returns) {
+                    depth += self.translate_assignment(lv, rv_rtn, comment.take(), line + depth);
                 }
+
                 depth
             }
             // ============================================================================
@@ -1383,17 +1365,17 @@ impl Translator {
                 //     }
                 //     1
             }
-            Statement::Return(..) => unreachable!(),
         }
     }
 
     fn translate_assignment(
         &mut self,
         l_value: LValue,
-        rtn: UnitReturn,
+        r_value_rtn: UnitReturn,
         comment: Option<String>,
         line: usize,
     ) -> usize {
+        println!("TRANSLATE ASN {:?} = {:?}", l_value, r_value_rtn);
         let mut depth = 0;
         // let var_opt = l_value.as_var().map(|k| {
         //     self.aliases
@@ -1421,7 +1403,7 @@ impl Translator {
             }
         }
 
-        match rtn {
+        match r_value_rtn {
             UnitReturn::Dev(unit_dev) => {
                 let (k, fix) = match l_value {
                     LValue::Var(k, fix) => (k, fix),
@@ -1460,13 +1442,13 @@ impl Translator {
                     LValue::Param(dev, param) => {
                         let unit_expr = match dev {
                             Dev::Lit(box id_rv) => {
-                                let (rtns, rv_depth) = self.translate_rvalue(id_rv, line + depth);
+                                let (rtns, rv_depth) = self.translate_r_value(id_rv, line + depth);
                                 let unit_dev = UnitDev::try_from(rtns).unwrap();
                                 depth += rv_depth;
                                 UnitExpr::new_s(unit_dev, param, unit_num)
                             },
                             Dev::Net(box hash_rv) => {
-                                let (rtns, rv_depth) = self.translate_rvalue(hash_rv, line + depth);
+                                let (rtns, rv_depth) = self.translate_r_value(hash_rv, line + depth);
                                 let unit_dev_net = UnitDevNet::try_from(rtns).unwrap();
                                 depth += rv_depth;
                                 UnitExpr::new_sb(unit_dev_net, param, unit_num)

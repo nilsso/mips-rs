@@ -99,22 +99,28 @@ impl<'i> AstNode<'i, Rule, MypsParser, MypsLexerError> for Expr {
     const RULE: Rule = Rule::expr;
 
     fn try_from_pair(pair: Pair<Rule>) -> MypsLexerResult<Self> {
+        println!("EXPR {:#?}", pair);
         match pair.as_rule() {
-            Rule::u_expr => {
+            Rule::expr => pair.first_inner()?.try_into_ast(),
+            Rule::expr_unary => {
                 let mut pairs = pair.into_inner();
-                let op = pairs.next_pair()?.try_into_ast::<UnaryOp>()?;
+                let op = pairs.next_pair()?.try_into_ast()?;
                 let rhs = pairs.next_pair()?.try_into_ast()?;
                 Ok(Expr::unary(op, rhs))
             }
-            Rule::b_expr => Ok(expr_climb(pair.into_inner())),
-            Rule::t_expr => {
+            Rule::expr_binary => {
+                let pairs = pair.into_inner();
+                println!("EXPR BIN PAIRS {:#?}", pairs);
+                Ok(expr_climb(pairs))
+            },
+            Rule::expr_ternary => {
                 let mut pairs = pair.into_inner();
                 let cond = pairs.next_pair()?.try_into_ast()?;
                 let if_t = pairs.next_pair()?.try_into_ast()?;
                 let if_f = pairs.next_pair()?.try_into_ast()?;
                 Ok(Expr::ternary(cond, if_t, if_f))
             }
-            Rule::r_value => Ok(Self::rvalue(pair.try_into_ast()?)),
+            Rule::rv => Ok(Self::rvalue(pair.try_into_ast()?)),
             _ => return Err(MypsLexerError::wrong_rule("an r-value expression", pair)),
         }
     }
@@ -124,28 +130,29 @@ impl<'i> AstNode<'i, Rule, MypsParser, MypsLexerError> for Expr {
 lazy_static! {
     static ref CLIMBER: PrecClimber<Rule> = PrecClimber::new(vec![
         // Logical
-        Operator::new(Rule::or, Assoc::Left),
-        Operator::new(Rule::xor, Assoc::Left),
-        Operator::new(Rule::and, Assoc::Left),
+        Operator::new(Rule::op_or, Assoc::Left),
+        Operator::new(Rule::op_xor, Assoc::Left),
+        Operator::new(Rule::op_and, Assoc::Left),
         // Relational
-        Operator::new(Rule::eq, Assoc::Left),
-        Operator::new(Rule::ge, Assoc::Left),
-        Operator::new(Rule::gt, Assoc::Left),
-        Operator::new(Rule::le, Assoc::Left),
-        Operator::new(Rule::lt, Assoc::Left),
-        Operator::new(Rule::ne, Assoc::Left),
+        Operator::new(Rule::op_eq, Assoc::Left),
+        Operator::new(Rule::op_ge, Assoc::Left),
+        Operator::new(Rule::op_gt, Assoc::Left),
+        Operator::new(Rule::op_le, Assoc::Left),
+        Operator::new(Rule::op_lt, Assoc::Left),
+        Operator::new(Rule::op_ne, Assoc::Left),
         // Numerical
-        Operator::new(Rule::add, Assoc::Left),
-        Operator::new(Rule::sub, Assoc::Left),
-        Operator::new(Rule::rem, Assoc::Left),
-        Operator::new(Rule::div, Assoc::Left),
-        Operator::new(Rule::mul, Assoc::Left),
+        Operator::new(Rule::op_add, Assoc::Left),
+        Operator::new(Rule::op_sub, Assoc::Left),
+        Operator::new(Rule::op_rem, Assoc::Left),
+        Operator::new(Rule::op_div, Assoc::Left),
+        Operator::new(Rule::op_mul, Assoc::Left),
     ]);
 }
 
 // Operator precedence climber infix helper
 fn infix(lhs: Expr, op_pair: Pair<Rule>, rhs: Expr) -> Expr {
     let op = op_pair.into_ast::<BinaryOp>();
+    println!("INFIX {:?} {} {:?}", lhs, op, rhs);
     Expr::binary(op, lhs, rhs)
 }
 

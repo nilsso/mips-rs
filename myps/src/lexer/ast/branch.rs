@@ -33,13 +33,12 @@ impl<'i> AstNode<'i, Rule, MypsParser, MypsLexerError> for Branch {
     fn try_from_pair(pair: Pair<Rule>) -> MypsLexerResult<Self> {
         #[rustfmt::skip]
         match pair.as_rule() {
-            Rule::branch       => pair.first_inner()?.try_into_ast(),
-            Rule::branch_loop  => Ok(Branch::Loop),
-            Rule::branch_if    => Ok(Branch::If(0, pair.first_inner()?.try_into_ast()?)),
-            Rule::branch_elif  => Ok(Branch::Elif(0, pair.first_inner()?.try_into_ast()?)),
-            Rule::branch_else  => Ok(Branch::Else(0)),
-            Rule::branch_while => Ok(Branch::While(pair.first_inner()?.try_into_ast()?)),
-            Rule::branch_for   => {
+            Rule::b_loop  => Ok(Branch::Loop),
+            Rule::b_if    => Ok(Branch::If(0, pair.first_inner()?.try_into_ast()?)),
+            Rule::b_elif  => Ok(Branch::Elif(0, pair.first_inner()?.try_into_ast()?)),
+            Rule::b_else  => Ok(Branch::Else(0)),
+            Rule::b_while => Ok(Branch::While(pair.first_inner()?.try_into_ast()?)),
+            Rule::b_for   => {
                 let mut pairs = pair.into_inner();
                 let i = pairs.next_pair()?.as_str().into();
                 let s = pairs.next_pair()?.try_into_ast()?;
@@ -47,7 +46,7 @@ impl<'i> AstNode<'i, Rule, MypsParser, MypsLexerError> for Branch {
                 let step = pairs.next().map(Expr::try_from_pair).transpose()?;
                 Ok(Branch::For(i, s, e, step))
             }
-            Rule::branch_def   => {
+            Rule::b_def   => {
                 let mut pairs = pair.into_inner();
                 let name = pairs.next_pair()?.as_str().into();
                 let args = pairs.map(|pair| pair.as_str().into()).collect();

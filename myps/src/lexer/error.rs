@@ -50,9 +50,9 @@ impl MypsLexerError {
         Self::UndefinedAlias(format!("Alias {} is undefined", key))
     }
 
-    pub fn wrong_alias(expected: &'static str, found: &Alias) -> Self {
-        Self::WrongAlias(format!("Expected {} alias, found {:?}", expected, found))
-    }
+    // pub fn wrong_alias(expected: &'static str, found: &Alias) -> Self {
+    //     Self::WrongAlias(format!("Expected {} alias, found {:?}", expected, found))
+    // }
 
     pub fn expected_indent(expected: usize) -> Self {
         Self::ExpectedIndent(format!("Expected indent of {} or more", expected))

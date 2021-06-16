@@ -61,10 +61,19 @@ fn parse_line_pair(
     }
 }
 
-#[derive(Debug)]
+// #[derive(Clone, Debug)]
+// pub enum Alias {
+//     Dev(Dev),
+//     // TODO: Add functions
+//     Int(i64),
+//     Num(f64),
+//     Var,
+// }
+
+#[derive(Clone, Debug)]
 pub struct Lexer {
-    pub(crate) alias_table: HashMap<String, RValueReturn>,
-    pub(crate) functions: HashMap<String, Function>,
+    pub(crate) alias_table: HashSet<String>,
+    pub(crate) functions: HashMap<String, Block>,
     pub(crate) called_functions: HashSet<String>,
 }
 
@@ -81,8 +90,8 @@ impl Lexer {
             .flatten()
             .collect::<Vec<(usize, Pair<Rule>, Option<String>)>>();
 
-        let mut alias_table = HashMap::new();
-        let functions = Function::default_functions();
+        let mut alias_table = HashSet::new();
+        let functions = HashMap::new();
         let mut called_functions = HashSet::<String>::new();
 
         let mut blocks = vec![(Block::program(), None)];
@@ -90,9 +99,6 @@ impl Lexer {
         let mut curr_indent = 0_usize;
         let mut expect_indent = false;
         let mut if_elif_else_index = -1_isize;
-
-        let mut def_within = false;
-        let mut def_had_return = false;
 
         fn head_items<'a>(blocks: &'a Vec<(Block, Option<String>)>) -> &'a Vec<Item> {
             &blocks.last().unwrap().0.items
@@ -113,17 +119,14 @@ impl Lexer {
                 .unwrap()
         }
 
-        fn compile_rvalue(
-            rvalue: &RValue,
+        fn compile_r_value(
+            r_value: &RValue,
             called_functions: &mut HashSet<String>,
         ) -> MypsLexerResult<()> {
-            match rvalue {
+            match r_value {
                 RValue::Expr(box e) => {
                     // compile_expr(e, called_functions)?;
                     compile_expr(e, called_functions).unwrap();
-                }
-                RValue::Func(FunctionCall { name, .. }) => {
-                    called_functions.insert(name.clone());
                 }
                 _ => {}
             }
@@ -182,9 +185,6 @@ impl Lexer {
                     expect_indent = false;
                 }
             } else {
-                if def_had_return && indent >= curr_indent {
-                    panic!("Expected function block to end");
-                }
                 if indent < curr_indent {
                     // Drop in indent level means the end of a branch
                     while indent < *indent_stack.last().unwrap() {
@@ -255,7 +255,7 @@ impl Lexer {
                             if !indent_stack.is_empty() {
                                 panic!("Cannot define nested functions");
                             }
-                            def_within = true;
+                            // unreachable!();
                         }
                     }
                     let block = Block::new(branch);
@@ -263,31 +263,7 @@ impl Lexer {
                     expect_indent = true;
                 }
                 Rule::stmt => {
-                    // let stmt = item_pair.try_into_ast()?;
-                    let stmt = item_pair.try_into_ast().unwrap();
-                    match &stmt {
-                        // Statement::AssignAlias(a_var, dev) => {
-                        //     let alias = Alias::Dev(dev.to_owned());
-                        //     alias_table.insert(a_var.clone(), alias);
-                        // }
-                        Statement::AssignValue(lvalues, rvalues) => {
-                            for rvalue in rvalues.iter() {
-                                compile_rvalue(rvalue, &mut called_functions).unwrap();
-                            }
-                        }
-                        Statement::FunctionCall(name, _) => {
-                            called_functions.insert(name.clone());
-                        }
-                        Statement::Return(returns) => {
-                            if !def_within {
-                                panic!("Cannot return outside a function");
-                            }
-                            for rv_rtn in returns.iter() {
-                                compile_rvalue(rv_rtn, &mut called_functions);
-                            }
-                            def_had_return = true;
-                        }
-                    }
+                    let stmt = item_pair.try_into_ast()?;
                     let (head, _) = blocks.last_mut().unwrap();
                     head.items.push(Item::statement(stmt, comment_opt));
                 }
@@ -344,82 +320,17 @@ impl Lexer {
         }
 
         // lexer.analyze_called_functions(&program_item)?;
-        lexer.analyze_item(program_item).unwrap();
+        let program_item = lexer.analyze_item(program_item)?.unwrap();
 
-        // Ok((program_item, lexer))
-        Err(MypsLexerError::Dummy)
+        Ok((program_item, lexer))
     }
 
-    fn analyze_def(
-        &mut self,
-        items: Vec<Item>,
-        name: String,
-        arg_labels: Vec<String>,
-        comment: Option<String>,
-    ) -> MypsLexerResult<()> {
-        let mut alias_table = HashMap::new();
-
-        // Check that the function is undefined
-        if self.functions.contains_key(&name) {
-            panic!("Cannot redefine functions");
-        }
-
-        // Construct an alias table of the argument labels,
-        // checking that argument labels are unique
-        for arg_label in arg_labels.iter() {
-            if alias_table.contains_key(arg_label) {
-                panic!("Duplicate argument '{}' in user function definition", arg_label);
-            } else {
-                alias_table.insert(arg_label.clone(), RValueReturn::Var(arg_label.clone()));
-            }
-        }
-
-        // Construct a lexer dedicated to analyzing the items of this new functions
-        let def_lexer = Lexer {
-            alias_table,
-            functions: self.functions.clone(),
-            called_functions: self.called_functions.clone(),
-        };
-
-        // Construct a block to analyze
-        let fn_item = Item {
-            item_inner: ItemInner::Block(Block {
-                branch: Branch::Program,
-                items,
-            }),
-            comment,
-        };
-
-        // Analyze the item
-        let item = def_lexer.analyze_item(fn_item)?.unwrap();
-
-        // Unpack the items
-        let Item {
-            item_inner: ItemInner::Block(Block { items, .. }),
-            ..
-        } = item;
-
-        // Count the number of returns
-        let return_item = items.last().unwrap();
-        let Item {
-            item_inner: ItemInner::Stmt(Statement::Return(returns)),
-            ..
-        } = return_item;
-        let num_returns = returns.len();
-
-        // Insert this new user function
-        let function = Function::new_user(arg_labels, num_returns, items);
-        self.functions.insert(name, function);
-
-        Ok(())
-    }
-
-    fn get_alias(&self, k: &String) -> MypsLexerResult<RValueReturn> {
-        self.alias_table
-            .get(k)
-            .cloned()
-            .ok_or(MypsLexerError::undefined_alias(k))
-    }
+    // fn get_alias(&self, k: &String) -> MypsLexerResult<RValueReturn> {
+    //     self.alias_table
+    //         .get(k)
+    //         .cloned()
+    //         .ok_or(MypsLexerError::undefined_alias(k))
+    // }
 
     fn analyze_item(&mut self, item: Item) -> MypsLexerResult<Option<Item>> {
         let Item {
@@ -433,7 +344,8 @@ impl Lexer {
 
                 match branch {
                     Branch::Def(name, arg_names) => {
-                        self.analyze_def(items, name, arg_names, comment).and(Ok(None))
+                        unreachable!();
+                        // self.analyze_def(items, name, arg_names, comment).and(Ok(None))
                     }
                     _ => {
                         let items = items
@@ -452,92 +364,86 @@ impl Lexer {
                     }
                 }
             }
-            ItemInner::Stmt(stmt) => match stmt {
-                // Statement::AssignAlias(alias, dev) => {}
-                Statement::AssignValue(lvalues, rvalues) => {
-                    let rvalue_kinds = rvalues
-                        .into_iter()
-                        .map(|rvalue| self.analyze_rvalue(rvalue))
-                        .collect::<MypsLexerResult<Vec<Vec<RValueReturn>>>>()
-                        .unwrap()
-                        .into_iter()
-                        .flat_map(|rvalue_kinds| rvalue_kinds.into_iter())
-                        .collect::<Vec<RValueReturn>>();
-
-                    let n_lvalues = lvalues.len();
-                    let n_rvalues = rvalue_kinds.len();
-                    if n_lvalues != n_rvalues {
-                        panic!(
-                            "Mismatched number of lvalues and rvalues ({} != {})",
-                            n_lvalues, n_rvalues
-                        );
+            ItemInner::Stmt(stmt) => {
+                match &stmt {
+                    Statement::AssignValue(l_values, r_values) => {
+                        for r_value in r_values.iter() {
+                            self.analyze_r_value(r_value)?;
+                        }
+                        for l_value in l_values.iter() {
+                            self.analyze_l_value(l_value)?;
+                            if let LValue::Var(k, ..) = l_value {
+                                self.alias_table.insert(k.clone());
+                            }
+                        }
                     }
-                    unreachable!();
-                }
-                Statement::FunctionCall(name, args) => {
-                    unreachable!("{:?}", stmt);
-                }
-                Statement::Return(..) => {
-                    unreachable!("{:?}", stmt);
-                }
-            },
+                    Statement::FunctionCall(name, args) => {
+                        unreachable!("{:?}", stmt);
+                    }
+                };
+                Ok(Some(Item::statement(stmt, comment)))
+            }
         }
     }
 
-    // Returns the Ok of number of rvalues returned by this rvalue
-    fn analyze_rvalue(&mut self, rvalue: RValue) -> MypsLexerResult<Vec<RValueReturn>> {
-        match rvalue {
+    fn analyze_l_value(&mut self, l_value: &LValue) -> MypsLexerResult<()> {
+        if let LValue::Param(dev, ..) = l_value {
+            self.analyze_dev(dev)
+        } else {
+            Ok(())
+        }
+        // match l_value {
+        //     LValue::Param(dev, _) => self.analyze_dev(dev),
+        //     LValue::Var(k, _) => self.analyze_var(k),
+        // }
+    }
+
+    // Returns the Ok of number of r_values returned by this r_value
+    fn analyze_r_value(&mut self, r_value: &RValue) -> MypsLexerResult<()> {
+        match r_value {
             RValue::Num(num) => {
-                let rtn = match num {
-                    Num::Var(k) => {
-                        let alias = self.alias_table.get(&k).unwrap();
-                        if let RValueReturn::Num(..) = alias {
-                            alias.clone()
-                        } else {
-                            panic!();
-                        }
-                    }
-                    _ => RValueReturn::Num(num),
-                };
-                Ok(vec![rtn])
+                self.analyze_num(num)?;
             }
             RValue::Dev(dev) => {
-                let rtn = match dev {
-                    Dev::Var(k) => {
-                        let alias = self.alias_table.get(&k).unwrap();
-                        if let RValueReturn::Dev(..) = alias {
-                            alias.clone()
-                        } else {
-                            panic!();
-                        }
-                    }
-                    _ => RValueReturn::Dev(dev),
-                };
-                Ok(vec![rtn])
+                self.analyze_dev(dev)?;
             }
             RValue::DevParam(dev, ..) | RValue::NetParam(dev, ..) | RValue::DevSlot(dev, ..) => {
-                if let Dev::Var(k) = dev {
-                    let alias = self.alias_table.get(k);
-                    if !matches!(alias, Some(ReturnKind::Dev)) {
-                        panic!();
-                    }
-                }
-                Ok(vec![ReturnKind::Num])
+                self.analyze_dev(dev)?;
             }
-            // RValue::Expr(box e) => {
-            //     self.analyze_expr(e)
-            // }
-            RValue::Func(func_call) => self.analyze_function_call(func_call),
-            // RValue::Var(k) => {
-            //     let return_kind = self.alias_table[k];
-            //     Ok(vec![return_kind])
-            // },
-            _ => unreachable!(),
+            RValue::Expr(box e) => {
+                self.analyze_expr(e)?;
+            }
+            RValue::Func(func, args) => {}
+            RValue::Var(k) => {
+                self.analyze_var(k)?;
+            }
+        }
+        Ok(())
+    }
+
+    fn analyze_var(&self, k: &String) -> MypsLexerResult<()> {
+        self.alias_table
+            .contains(k)
+            .then_some(())
+            .ok_or(MypsLexerError::undefined_alias(k))
+    }
+
+    fn analyze_num(&self, num: &Num) -> MypsLexerResult<()> {
+        match num {
+            Num::Var(k) => self.analyze_var(k),
+            _ => Ok(()),
+        }
+    }
+
+    fn analyze_dev(&self, dev: &Dev) -> MypsLexerResult<()> {
+        match dev {
+            Dev::Var(k) => self.analyze_var(k),
+            _ => Ok(()),
         }
     }
 
     // Reduce, validate and analyze an expression helper.
-    fn analyze_expr(&mut self, expr: &Expr) -> MypsLexerResult<Vec<ReturnKind>> {
+    fn analyze_expr(&mut self, expr: &Expr) -> MypsLexerResult<()> {
         match expr {
             Expr::Unary { op, box rhs } => {
                 // analyze_expr(rhs, alias_table, dependencies)?;
@@ -566,129 +472,10 @@ impl Lexer {
                 self.analyze_expr(if_f).unwrap();
             }
             Expr::RValue(rv) => {
-                // analyze_rvalue(rv, alias_table, dependencies)?;
-                self.analyze_rvalue(rv).unwrap();
+                // analyze_r_value(rv, alias_table, dependencies)?;
+                self.analyze_r_value(rv).unwrap();
             }
         }
         Ok(())
     }
-
-    fn analyze_function_call(
-        &mut self,
-        func_call: &FunctionCall,
-    ) -> MypsLexerResult<Vec<RValueReturn>> {
-        let FunctionCall { name, args } = func_call;
-
-        let function = self.functions.get(name).unwrap();
-        let (num_args_expected, return_kinds) = match function {
-            Function::Builtin(FunctionBuiltin {
-                num_args,
-                num_returns
-            }) => (*num_args, return_kinds),
-            Function::User(FunctionUser {
-                arg_labels,
-                num_returns,
-                ..
-            }) => (arg_labels.len(), return_kinds),
-        };
-
-        if num_args_expected != args.len() {
-            let err = MypsLexerError::func_wrong_num_args(name, num_args_expected, args.len());
-            panic!("{:?}", err);
-            // return Err(err);
-        }
-
-        // // Sum up the argument depths
-        // let mut depth = 0;
-        // for arg in args.iter() {
-        //     match arg {
-        //         Arg::Dev(..) => {
-        //             depth += 1;
-        //         },
-        //         Arg::RValue(rvalue) => {
-        //             depth += self.analyze_rvalue(rvalue).unwrap();
-        //         },
-        //     }
-        // }
-
-        Ok(return_kinds.clone())
-    }
-
-    // fn analyze_called_functions(&mut self, item: &Item) -> MypsLexerResult<()> {
-    // fn test_rvalue(rvalue: &RValue, functions: &Functions) -> MypsLexerResult<()> {
-    //     match rvalue {
-    //         // RValue::Num(Num),
-    //         // RValue::DevParam(Dev, String),
-    //         // RValue::NetParam(Dev, Mode, String),
-    //         // RValue::DevSlot(Dev, Int, String),
-    //         RValue::Expr(box expr) => test_expr(expr, functions)?,
-    //         RValue::Func(FunctionCall { name, args }) => {
-    //             let func = functions
-    //                 .get(name)
-    //                 .ok_or(MypsLexerError::func_undefined(name))?;
-    //             let arg_kinds = match func {
-    //                 Function::Builtin(FunctionBuiltin { arg_kinds, ..}) => arg_kinds,
-    //                 Function::User(FunctionUser { arg_kinds, .. }) => arg_kinds,
-    //             };
-    //             for (expected, found) in arg_kinds.iter().zip(args.iter()) {
-    //                 let found = match found {
-    //                     Arg::RValue(..) => ArgKind::RValue,
-    //                     Arg::Dev(..) => ArgKind::Dev,
-    //                 };
-    //                 if &found != expected {
-    //                     return Err(MypsLexerError::func_wrong_args(name, arg_kinds, args));
-    //                 }
-    //             }
-    //         }
-    //         _ => {}
-    //     }
-    //     Ok(())
-    // }
-
-    // fn test_expr(expr: &Expr, functions: &Functions) -> MypsLexerResult<()> {
-    //     match expr {
-    //         Expr::RValue(rvalue) => test_rvalue(rvalue, functions)?,
-    //         Expr::Unary { rhs: box rhs, .. } => test_expr(rhs, functions)?,
-    //         Expr::Binary {
-    //             lhs: box lhs,
-    //             rhs: box rhs,
-    //             ..
-    //         } => {
-    //             test_expr(lhs, functions)?;
-    //             test_expr(rhs, functions)?;
-    //         }
-    //         Expr::Ternary {
-    //             cond: box cond,
-    //             if_t: box if_t,
-    //             if_f: box if_f,
-    //         } => {
-    //             test_expr(cond, functions)?;
-    //             test_expr(if_t, functions)?;
-    //             test_expr(if_f, functions)?;
-    //         }
-    //     }
-    //     Ok(())
-    // }
-
-    // match &item.item_inner {
-    //     ItemInner::Block(block) => {
-    //         for item in block.items.iter() {
-    //             self.analyze_called_functions(item)?;
-    //         }
-    //     }
-    //     ItemInner::Stmt(stmt) => {
-    //         match stmt {
-    //             Statement::AssignAlias(..) => {}
-    //             Statement::AssignValue(_, rvalue) => {
-    //                 // test_rvalue(rvalue, &self.functions)?
-    //             }
-    //             Statement::FunctionCall(..) => {
-    //                 // TODO
-    //                 unreachable!();
-    //             }
-    //         }
-    //     }
-    // }
-    // Ok(())
-    // }
 }

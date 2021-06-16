@@ -17,7 +17,7 @@ use util::traits::AstError;
 pub struct MypsParser;
 
 pub mod lexer;
-// pub mod translator;
+pub mod translator;
 
 // pub mod prelude {
 //     pub use crate::lexer::lex::parse_and_lex;
@@ -44,5 +44,5 @@ pub mod superprelude {
     pub use crate::*;
     pub use crate::lexer::*;
     pub use crate::lexer::ast::*;
-    // pub use crate::translator::*;
+    pub use crate::translator::*;
 }
