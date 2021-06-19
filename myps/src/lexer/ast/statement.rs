@@ -1,12 +1,48 @@
-use std::{fmt, fmt::Display};
+use std::collections::HashSet;
 
 use crate::superprelude::*;
+
+#[derive(Clone, Debug)]
+pub enum FunctionCall {
+    Nullary(String),
+    Unary(String, RValue),
+    User(String),
+}
 
 #[derive(Clone, Debug)]
 pub enum Statement {
     // AssignAlias(String, Dev),
     AssignValue(Vec<LValue>, Vec<RValue>),
-    FunctionCall(String, Vec<RValue>),
+    AssignSelf(BinaryOp, LValue, RValue),
+    FunctionCall(FunctionCall),
+}
+
+impl Statement {
+    pub fn analyze(&self, aliases: &mut HashSet<String>, called_functions: &mut HashSet<String>) -> MypsLexerResult<()> {
+        match self {
+            Self::AssignValue(l_values, r_values) => {
+                for l_value in l_values.iter() {
+                    l_value.analyze(aliases)?;
+                }
+                for r_value in r_values.iter() {
+                    r_value.analyze(aliases)?;
+                }
+            },
+            Self::AssignSelf(_, l_value, r_value) => {
+                l_value.analyze(aliases)?;
+                r_value.analyze(aliases)?;
+            },
+            Self::FunctionCall(function_call) => {
+                match function_call {
+                    FunctionCall::Nullary(..) | FunctionCall::Unary(..) => {},
+                    FunctionCall::User(name) => {
+                        called_functions.insert(name.to_owned());
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
 }
 
 impl<'i> AstNode<'i, Rule, MypsParser, MypsLexerError> for Statement {
@@ -17,7 +53,7 @@ impl<'i> AstNode<'i, Rule, MypsParser, MypsLexerError> for Statement {
     fn try_from_pair(pair: Pair<Rule>) -> MypsLexerResult<Self> {
         match pair.as_rule() {
             // Rule::stmt => pair.first_inner()?.try_into_ast(),
-            Rule::stmt => pair.first_inner().unwrap().try_into_ast(),
+            Rule::stmt => pair.only_inner().unwrap().try_into_ast(),
             // Rule::assign_alias => {
             //     let mut inner_pairs = pair.into_inner();
             //     // let alias = inner_pairs.next_pair()?.as_str().into();
@@ -32,8 +68,7 @@ impl<'i> AstNode<'i, Rule, MypsParser, MypsLexerError> for Statement {
                     .into_inner().partition::<Vec<Pair<Rule>>, _>(|pair| {
                         match pair.as_rule() {
                             Rule::lv => true,
-                            Rule::expr => false,
-                            _ => unreachable!("{:?}", pair),
+                            _ => false,
                         }
                     });
 
@@ -71,32 +106,29 @@ impl<'i> AstNode<'i, Rule, MypsParser, MypsLexerError> for Statement {
                     "%/" => BinaryOp::Rem,
                     _ => unreachable!("{:?}", op_pair),
                 };
-                let expr = Expr::binary(op, Expr::RValue(l_value.as_rvalue()), r_value);
-                let r_value = RValue::Expr(Box::new(expr));
-                Ok(Self::AssignValue(vec![l_value], vec![r_value]))
+                // let expr = Expr::binary(op, Expr::RValue(l_value.as_rvalue()), r_value);
+                // let r_value = RValue::Expr(Box::new(expr));
+                // let stmt = Self::AssignValue(vec![l_value], vec![r_value]);
+                let stmt = Self::AssignSelf(op, l_value, r_value);
+                // println!("stmt::assign_self -> {:?}", stmt);
+                Ok(stmt)
             }
             Rule::stmt_func_nullary => {
-                unreachable!();
-                // let mut inner_pairs = pair.into_inner();
-                // // let name = inner_pairs.next_pair()?.as_str().into();
-                // let name = inner_pairs.next_pair().unwrap().as_str().into();
-                // let args = inner_pairs
-                //     // .first_inner()?
-                //     .first_inner()
-                //     .unwrap()
-                //     .into_inner()
-                //     .map(|pair| match pair.as_rule() {
-                //         Rule::dev => Dev::try_from_pair(pair).unwrap().into(),
-                //         Rule::r_value => RValue::try_from_pair(pair).unwrap().into(),
-                //         _ => unreachable!("{:?}", pair),
-                //     })
-                //     // .collect::<MypsLexerResult<Vec<RValue>>>()?;
-                //     // .collect::<MypsLexerResult<Vec<RValue>>>().unwrap();
-                //     .collect::<Vec<Arg>>();
-                // Ok(Self::FunctionCall(name, args))
+                let name = pair.only_inner()?.as_str().into();
+                let function_call = FunctionCall::Nullary(name);
+                Ok(Self::FunctionCall(function_call))
             }
             Rule::stmt_func_unary => {
-                unreachable!();
+                let mut pairs = pair.into_inner();
+                let name = pairs.next_pair()?.as_str().into();
+                let rv = pairs.final_pair()?.try_into_ast()?;
+                let function_call = FunctionCall::Unary(name, rv);
+                Ok(Self::FunctionCall(function_call))
+            }
+            Rule::stmt_func_user => {
+                let name = pair.only_inner()?.as_str().into();
+                let function_call = FunctionCall::User(name);
+                Ok(Self::FunctionCall(function_call))
             }
             _ => Err(MypsLexerError::wrong_rule("a statement", pair)),
         }

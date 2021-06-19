@@ -4,4 +4,3 @@ loop:
         quantity = d(i).Quantity * stack_size
         i += 1
         d(i).Setting = quantity
-    yield()

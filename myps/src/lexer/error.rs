@@ -15,17 +15,18 @@ pub enum MypsLexerError {
     ParseFloatError(ParseFloatError),
     // Lexer errors
     WrongRule(String),
-    UndefinedAlias(String),
-    WrongAlias(String),
-
     ExpectedIndent(String),
     WrongIndent(String),
     MisplacedElif(&'static str),
     MisplacedElse(&'static str),
     BranchStatement(&'static str),
 
-    FuncUndefined(String),
-    FuncWrongNumArgs(String),
+    UndefinedAlias(String),
+    WrongAlias(String),
+    WrongNumArgs(String),
+    UndefinedFunction(String),
+    RedefinedFunction(String),
+    NestedFunction(String),
 
     Dummy,
 }
@@ -76,14 +77,19 @@ impl MypsLexerError {
         Self::BranchStatement("Items can't be constructed from branch statements")
     }
 
-    pub fn func_undefined(name: &String) -> Self {
-        Self::FuncUndefined(format!("Function {} is undefined", name))
+    pub fn wrong_num_args(kind: &'static str, expected: usize, found: usize) -> Self {
+        Self::WrongNumArgs(format!("{} function expects {} arg, found {}", kind, expected, found))
     }
 
-    pub fn func_wrong_num_args(name: &String, expected: usize, found: usize) -> Self {
-        Self::FuncWrongNumArgs(format!(
-            "Function {} expected {} arguments, found {}",
-            name, expected, found
-        ))
+    pub fn undefined_function(name: &String) -> Self {
+        Self::UndefinedFunction(format!("Function {} is undefined", name))
+    }
+
+    pub fn redefined_function(name: &String) -> Self {
+        Self::RedefinedFunction(format!("Function {} cannot be redefined", name))
+    }
+
+    pub fn nested_function(name: &String) -> Self {
+        Self::NestedFunction(format!("Function {} cannot be defined within another blocks", name))
     }
 }

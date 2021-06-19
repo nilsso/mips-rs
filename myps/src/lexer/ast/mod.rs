@@ -11,7 +11,7 @@ pub use dev::Dev;
 // pub use dev_net::DevNet;
 
 mod r_value;
-pub use r_value::{Mode, RValue};
+pub use r_value::{Mode, RValue, RVFunc};
 
 mod l_value;
 pub use l_value::LValue;
@@ -23,7 +23,7 @@ mod expr;
 pub use expr::Expr;
 
 mod statement;
-pub use statement::Statement;
+pub use statement::{Statement, FunctionCall};
 
 mod item;
 pub use item::{Item, ItemInner};
@@ -33,3 +33,6 @@ pub use branch::Branch;
 
 mod block;
 pub use block::Block;
+
+// mod function;
+// pub use function::Function;

@@ -60,6 +60,15 @@ impl Item {
     ) -> Self {
         Self::new(ItemInner::Stmt(stmt), comment)
     }
+
+    pub fn analyze(&self, aliases: &mut HashSet<String>, called_functions: &mut HashSet<String>) -> MypsLexerResult<()> {
+        let Item { item_inner, .. } = self;
+
+        match item_inner {
+            ItemInner::Block(block) => block.analyze(aliases, called_functions),
+            ItemInner::Stmt(stmt) => stmt.analyze(aliases, called_functions),
+        }
+    }
 }
 
 // impl<'i> AstNode<'i, Rule, MypsParser, MypsLexerError> for Item {

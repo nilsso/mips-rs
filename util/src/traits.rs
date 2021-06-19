@@ -11,9 +11,11 @@ use pest::error::Error as PegError;
 /// Abstract syntax tree conversion error type.
 #[derive(Debug)]
 pub enum AstError {
-    InsufficientPairs,
+    NotEnoughPairs,
+    TooManyPairs,
 }
 
+// ================================================================================================
 /// Get next [`Pair`](`pest::iterators::Pair`) from [`Pairs`](`pest::iterators::Pairs`) trait.
 ///
 /// Provides blanket implementations over [`Pairs`](`pest::iterators::Pairs`).
@@ -24,48 +26,80 @@ where
     fn next_pair(&mut self) -> Result<Pair<'i, R>, AstError>;
 }
 
-/// Get first inner [`Pair`](`pest::iterators::Pair`) trait.
-///
-/// Provides blanket implementations over [`Pair`](`pest::iterators::Pair`)
-/// and [`Pairs`](`pest::iterators::Pairs`).
-pub trait FirstInner<'i, R>
-where
-    Self: Sized,
-    R: RuleType,
-{
-    fn first_inner(self) -> Result<Pair<'i, R>, AstError>;
-
-    fn first_inner_unchecked(self) -> Pair<'i, R> {
-        self.first_inner().unwrap()
-    }
-}
-
 impl<'i, R> NextPair<'i, R> for Pairs<'i, R>
 where
     R: RuleType,
 {
     fn next_pair(&mut self) -> Result<Pair<'i, R>, AstError> {
-        self.next().ok_or(AstError::InsufficientPairs.into())
+        self.next().ok_or(AstError::NotEnoughPairs.into())
     }
 }
 
-impl<'i, R> FirstInner<'i, R> for Pairs<'i, R>
+// ================================================================================================
+pub trait PairsDone<'i, R>
 where
+    Self: Iterator<Item = Pair<'i, R>>,
     R: RuleType,
 {
-    fn first_inner(mut self) -> Result<Pair<'i, R>, AstError> {
-        self.next_pair()
+    fn done(&mut self) -> Result<(), AstError> {
+        if self.next().is_some() {
+            Err(AstError::TooManyPairs)
+        } else {
+            Ok(())
+        }
     }
 }
 
-impl<'i, R> FirstInner<'i, R> for Pair<'i, R>
+impl<'i, R> PairsDone<'i, R> for Pairs<'i, R>
+where
+    R: RuleType,
+{}
+
+// ================================================================================================
+pub trait FinalPair<'i, R>
+where
+    Self: NextPair<'i, R> + PairsDone<'i, R> + Iterator<Item = Pair<'i, R>>,
+    R: RuleType,
+{
+    fn final_pair(&mut self) -> Result<Pair<'i, R>, AstError> {
+        let pair = self.next_pair()?;
+        self.done()?;
+        Ok(pair)
+    }
+}
+
+impl<'i, R> FinalPair<'i, R> for Pairs<'i, R>
+where
+    R: RuleType,
+{}
+
+// ================================================================================================
+pub trait OnlyInner<'i, R>
 where
     R: RuleType,
 {
-    fn first_inner(self) -> Result<Pair<'i, R>, AstError> {
-        self.into_inner().first_inner()
+    fn only_inner(self) -> Result<Pair<'i, R>, AstError>;
+}
+
+impl<'i, R> OnlyInner<'i, R> for Pairs<'i, R>
+where
+    R: RuleType,
+{
+    fn only_inner(mut self) -> Result<Pair<'i, R>, AstError> {
+        self.final_pair()
     }
 }
+
+impl<'i, R> OnlyInner<'i, R> for Pair<'i, R>
+where
+    R: RuleType,
+{
+    fn only_inner(self) -> Result<Pair<'i, R>, AstError> {
+        self.into_inner().only_inner()
+    }
+}
+
+// impl<'i, R> FirstLastInne
 
 /// Abstract syntax tree conversion traits.
 ///
@@ -87,7 +121,7 @@ where
 
     fn try_from_str<S: AsRef<str>>(source: &S) -> Result<Self::Output, E> {
         let pairs = P::parse(Self::RULE, source.as_ref())?;
-        pairs.first_inner().map_err(E::from).and_then(Self::try_from_pair)
+        pairs.only_inner().map_err(E::from).and_then(Self::try_from_pair)
     }
 
     fn try_from_file(path: &Path) -> Result<Self::Output, E> {

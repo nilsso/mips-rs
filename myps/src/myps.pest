@@ -43,10 +43,10 @@ param = @{ token }
  * which we can store a number. An l-value can be a variable or the parameter of a device (or many
  * devices in the case of the network).
  */
-lv = { var_fix | var | lv_param }
-    var_fix = { "fix" ~ var }
+lv = { lv_param | var_fix | var }
     /* A device parameter to write to */
     lv_param = ${ dev ~ "." ~ param }
+    var_fix = { "fix" ~ var }
 
 
 /* An r-value
@@ -55,7 +55,7 @@ lv = { var_fix | var | lv_param }
  * reduced to a number. An r-value can be a literal number, a value copied from a variable, a value
  * read from a device parameter, or an expression of any of the previous.
  */
-rv = { dev_lit | num_lit | rv_param | rv_func | "(" ~ expr ~ ")" | var }
+rv = { rv_func | rv_param | dev_lit | num_lit | "(" ~ expr ~ ")" | var }
     rv_param = _{ rv_net_param | rv_dev_param | rv_dev_slot }
         rv_net_param = ${ int ~ "." ~ batch_mode ~ "." ~ param }
         rv_dev_param = ${ dev ~ "." ~ param }
@@ -72,45 +72,38 @@ batch_mode = _{ batch_avg | batch_sum | batch_min | batch_max }
 
 
 /* Built-in functions which return an r-value */
-rv_func = _{ rv_func_nullary | rv_func_unary | rv_func_binary }
-    rv_func_nullary = { (f_peek | f_pop) ~ "(" ~ ")" }
-        f_peek = { "peek" }
-        f_pop  = { "pop" }
-    rv_func_unary = {
-        (
-            f_abs   | f_acos | f_asin | f_atan  | f_ceil | f_cos  | f_exp |
-            f_floor | f_ln   | f_rand | f_round | f_sin  | f_sqrt | f_tan | f_trunc
-        ) ~ "(" ~ rv ~ ")"
-    }
-        f_abs   = { "abs" }
-        f_acos  = { "acos" }
-        f_asin  = { "asin" }
-        f_atan  = { "atan" }
-        f_ceil  = { "ceil" }
-        f_cos   = { "cos" }
-        f_exp   = { "exp" }
-        f_floor = { "floor" }
-        f_ln    = { "ln" }
-        f_rand  = { "rand" }
-        f_round = { "round" }
-        f_sin   = { "sin" }
-        f_sqrt  = { "sqrt" }
-        f_tan   = { "tan" }
-        f_trunc = { "trunc" }
-    rv_func_binary = {
-        (
-            f_max | f_min
-        ) ~ "(" ~ rv ~ "," ~ rv ~ ")"
-    }
-        f_max   = { "max" }
-        f_min   = { "min" }
+rv_func = { rv_func_name ~ "(" ~ (expr ~ ",")* ~ expr? ~ ")" }
+    rv_func_name = _{ rv_func_nullary | rv_func_unary | rv_func_binary }
+        rv_func_nullary = { f_peek | f_pop }
+            f_peek = { "peek" }
+            f_pop  = { "pop" }
+        rv_func_unary = { f_abs   | f_acos | f_asin | f_atan  | f_ceil | f_cos  | f_exp |
+                           f_floor | f_ln   | f_rand | f_round | f_sin  | f_sqrt | f_tan | f_trunc }
+            f_abs   = { "abs" }
+            f_acos  = { "acos" }
+            f_asin  = { "asin" }
+            f_atan  = { "atan" }
+            f_ceil  = { "ceil" }
+            f_cos   = { "cos" }
+            f_exp   = { "exp" }
+            f_floor = { "floor" }
+            f_ln    = { "ln" }
+            f_rand  = { "rand" }
+            f_round = { "round" }
+            f_sin   = { "sin" }
+            f_sqrt  = { "sqrt" }
+            f_tan   = { "tan" }
+            f_trunc = { "trunc" }
+        rv_func_binary = { f_max | f_min }
+            f_max   = { "max" }
+            f_min   = { "min" }
 
 /* ============================================================================================== */
 /* Expressions */
 /* ============================================================================================== */
 
 /* An expression */
-expr = { expr_ternary | expr_binary | expr_unary | rv }
+expr = _{ expr_binary | rv | expr_ternary | expr_unary }
     expr_unary   = { op_u ~ rv }
     expr_binary  = { rv ~ (op_b ~ rv)+ }
     expr_ternary = { rv ~ "?" ~ rv ~ ":" ~ rv }
@@ -141,24 +134,25 @@ op_b   = _{
     op_le = { "<=" }
     op_lt = { "<" }
     op_ne = { "!=" }
-op_asn = _{ "+=" | "-=" | "*=" | "/=" | "%=" }
+op_asn = @{ "+=" | "-=" | "*=" | "/=" | "%=" }
 
 /* ============================================================================================== */
 /* Program and statements */
 /* ============================================================================================== */
 
 /* A statement */
-stmt = { stmt_assign_self | stmt_assign_value | stmt_func }
+stmt = !{ stmt_assign_self | stmt_assign_value | stmt_func }
     stmt_assign_value =  { (lv ~ ",")* ~ lv ~ "=" ~ (expr ~ ",")* ~ expr }
     stmt_assign_self  =  { lv ~ op_asn ~ expr }
-    stmt_func         = _{ stmt_func_nullary | stmt_func_unary }
+    stmt_func         = _{ stmt_func_nullary | stmt_func_unary | stmt_func_user }
         stmt_func_nullary = { (f_hcf | f_yield) ~ "(" ~ ")" }
             f_hcf   = { "hcf" }
             f_yield = { "yield" }
         stmt_func_unary = { ("push" | "sleep") ~ "(" ~ rv ~ ")" }
+        stmt_func_user = { var ~ "(" ~ ")" }
 
 /* A branch */
-branch = { ( b_loop | b_if | b_elif | b_else | b_while | b_for  | b_def ) ~ ":" }
+branch = !{ ( b_loop | b_if | b_elif | b_else | b_while | b_for  | b_def ) ~ ":" }
     b_loop  = { "loop" }
     b_if    = { "if" ~ expr }
     b_elif  = { "elif" ~ expr }
@@ -168,9 +162,9 @@ branch = { ( b_loop | b_if | b_elif | b_else | b_while | b_for  | b_def ) ~ ":" 
     b_def   = { "def" ~ var }
 
 line = ${ empty | (indent* ~ item ~ WHITESPACE* ~ comment? ~ NEWLINE) }
-    empty = { WHITESPACE* ~ WHITESPACE* ~ COMMENT* ~ NEWLINE }
-    indent = { "    " }
-    item = !{ branch | stmt } /* NOTE: Non-atomic starts here */
+    empty = ${ WHITESPACE* ~ WHITESPACE* ~ comment* ~ NEWLINE }
+    indent = @{ "    " }
+    item = ${ branch | stmt } /* NOTE: Non-atomic starts here */
 
 program = ${
     SOI ~
@@ -178,6 +172,12 @@ program = ${
     EOI
 }
 
-comment = @{ COMMENT+ }
-COMMENT = _{ "#" ~ (!NEWLINE ~ ANY)* }
+comment = @{ "#" ~ (!NEWLINE ~ ANY)* }
+/* comment = @{ COMMENT+ } */
+/* COMMENT = _{ "#" ~ (!NEWLINE ~ ANY)* } */
 WHITESPACE = _{ " " }
+
+rv_line = { SOI ~ rv ~ EOI }
+expr_line = { SOI ~ expr ~ EOI }
+rv_expr_line = { SOI ~ (expr | rv) ~ EOI }
+stmt_assign_value_line = { SOI ~ stmt_assign_value ~ EOI }

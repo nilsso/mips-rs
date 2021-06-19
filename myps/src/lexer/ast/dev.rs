@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::superprelude::*;
 
 /// Device node.
@@ -7,6 +9,20 @@ pub enum Dev {
     Net(Box<RValue>),
     Var(String),
     DB,
+}
+
+impl Dev {
+    pub fn analyze(&self, aliases: &mut HashSet<String>) -> MypsLexerResult<()> {
+        match self {
+            Dev::Var(k) => {
+                aliases
+                    .contains(k)
+                    .then_some(())
+                    .ok_or(MypsLexerError::undefined_alias(k))
+            },
+            _ => Ok(()),
+        }
+    }
 }
 
 impl<'i> AstNode<'i, Rule, MypsParser, MypsLexerError> for Dev {
@@ -19,15 +35,19 @@ impl<'i> AstNode<'i, Rule, MypsParser, MypsLexerError> for Dev {
 
     fn try_from_pair(pair: Pair<Rule>) -> MypsLexerResult<Self> {
         match pair.as_rule() {
-            Rule::dev_lit => pair.first_inner()?.try_into_ast(),
+            Rule::dev_lit => pair.only_inner()?.try_into_ast(),
             Rule::dev_self => Ok(Dev::DB),
             Rule::dev_base => {
-                let rvalue = pair.first_inner()?.try_into_ast()?;
-                Ok(Dev::Lit(Box::new(rvalue)))
+                let rv = pair.only_inner()?.try_into_ast()?;
+                Ok(Dev::Lit(Box::new(rv)))
             }
             Rule::dev_net => {
-                let rvalue = pair.first_inner()?.try_into_ast()?;
-                Ok(Dev::Net(Box::new(rvalue)))
+                let rv = pair.only_inner()?.try_into_ast()?;
+                Ok(Dev::Net(Box::new(rv)))
+            }
+            Rule::int => {
+                let rv = pair.try_into_ast()?;
+                Ok(Self::Net(Box::new(rv)))
             }
             Rule::var => Ok(Self::Var(pair.as_str().into())),
             _ => return Err(MypsLexerError::wrong_rule("a device", pair)),

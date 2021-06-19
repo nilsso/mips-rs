@@ -31,7 +31,7 @@ impl<'i> AstNode<'i, Rule, MypsParser, MypsLexerError> for UnaryOp {
 
     fn try_from_pair(pair: Pair<Rule>) -> MypsLexerResult<Self> {
         Ok(match pair.as_rule() {
-            Rule::op_u => pair.first_inner()?.try_into_ast()?,
+            Rule::op_u => pair.only_inner()?.try_into_ast()?,
             Rule::op_inv => Self::Inv,
             Rule::op_neg => Self::Not,
             _ => return Err(MypsLexerError::wrong_rule("a unary operator", pair)),
@@ -97,7 +97,7 @@ impl<'i> AstNode<'i, Rule, MypsParser, MypsLexerError> for BinaryOp {
 
     fn try_from_pair(pair: Pair<Rule>) -> MypsLexerResult<Self> {
         Ok(match pair.as_rule() {
-            Rule::op_b => pair.first_inner()?.try_into_ast()?,
+            Rule::op_b => pair.only_inner()?.try_into_ast()?,
             // Numerical
             Rule::op_add => Self::Add,
             Rule::op_sub => Self::Sub,

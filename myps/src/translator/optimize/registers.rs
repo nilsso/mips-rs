@@ -109,10 +109,6 @@ pub fn var_to_reg_optimizer_map(
             color_graph.add_edge(id, to, ());
         }
     }
-    for id in color_graph.node_indices() {
-        let weight = color_graph.node_weight(id);
-        let count = color_graph.neighbors(id).count();
-    }
 
     // let m = n + colors_fixed.len();
     let map = color_graph

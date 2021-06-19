@@ -2,15 +2,14 @@
 #![feature(box_patterns)]
 #![feature(stmt_expr_attributes)]
 #![feature(bool_to_option)]
-#![allow(unused_imports)]
-use std::io::Error as IOError;
-use std::num::{ParseFloatError, ParseIntError};
+// #![allow(unused_imports)]
 
-use pest::iterators::Pair;
+// use std::io::Error as IOError;
+// use std::num::{ParseFloatError, ParseIntError};
+
 use pest_derive::Parser;
 
 use util::impl_from_error;
-use util::traits::AstError;
 
 #[derive(Parser)]
 #[grammar = "myps.pest"]

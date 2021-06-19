@@ -1,4 +1,6 @@
 // #![allow(unused_imports)]
+use std::collections::HashSet;
+
 use lazy_static::lazy_static;
 use pest::prec_climber::{Assoc, Operator, PrecClimber};
 
@@ -86,6 +88,35 @@ impl Expr {
             _ => self,
         }
     }
+
+    pub fn analyze(&self, aliases: &mut HashSet<String>) -> MypsLexerResult<()> {
+        match self {
+            Expr::Unary { op, box rhs } => {
+                rhs.analyze(aliases).unwrap();
+            }
+            Expr::Binary {
+                op,
+                box lhs,
+                box rhs,
+            } => {
+                lhs.analyze(aliases).unwrap();
+                rhs.analyze(aliases).unwrap();
+            }
+            Expr::Ternary {
+                box cond,
+                box if_t,
+                box if_f,
+            } => {
+                cond.analyze(aliases).unwrap();
+                if_t.analyze(aliases).unwrap();
+                if_f.analyze(aliases).unwrap();
+            }
+            Expr::RValue(rv) => {
+                rv.analyze(aliases).unwrap();
+            }
+        }
+        Ok(())
+    }
 }
 
 impl<'i> AstNode<'i, Rule, MypsParser, MypsLexerError> for Expr {
@@ -100,11 +131,10 @@ impl<'i> AstNode<'i, Rule, MypsParser, MypsLexerError> for Expr {
 
     fn try_from_pair(pair: Pair<Rule>) -> MypsLexerResult<Self> {
         match pair.as_rule() {
-            Rule::expr => pair.first_inner()?.try_into_ast(),
             Rule::expr_unary => {
                 let mut pairs = pair.into_inner();
                 let op = pairs.next_pair()?.try_into_ast()?;
-                let rhs = pairs.next_pair()?.try_into_ast()?;
+                let rhs = pairs.final_pair()?.try_into_ast()?;
                 Ok(Expr::unary(op, rhs))
             }
             Rule::expr_binary => {
@@ -114,7 +144,7 @@ impl<'i> AstNode<'i, Rule, MypsParser, MypsLexerError> for Expr {
                 let mut pairs = pair.into_inner();
                 let cond = pairs.next_pair()?.try_into_ast()?;
                 let if_t = pairs.next_pair()?.try_into_ast()?;
-                let if_f = pairs.next_pair()?.try_into_ast()?;
+                let if_f = pairs.final_pair()?.try_into_ast()?;
                 Ok(Expr::ternary(cond, if_t, if_f))
             }
             Rule::rv => {

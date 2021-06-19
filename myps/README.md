@@ -3,6 +3,10 @@ MYPS Lexer
 
 ## Notes and todo
 
+* Fix `functions` to be a vector instead of a hash (to fix undefined aliases in later defined
+    function, deterministically)
+* Come up with a different way for the Lexer to construct the items and blocks. It's real messy at
+  the moment, which deconstructing and reconstructing blocks.
 * Refactor lexer into a struct. Need to add called function names to the list;
     too many mutable references floating around in the lexer function.
 * Tighten up error variant names (i.e. UndefinedAlias versus FuncUndefined)

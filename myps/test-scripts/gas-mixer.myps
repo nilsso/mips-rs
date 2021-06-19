@@ -2,10 +2,13 @@ R = 8.31446261815324
 FurnaceHash = 545937711
 vT = 1000 # Furnace volume
 
-pT = 500 # Target pressure
-tT = 1000 # Target temp
 HAnalyzer = d0
 CAnalyzer = d1
+pTMem = d2
+tTMem = d3
+
+pT = pTMem.Setting # Target pressure
+tT = tTMem.Setting # Target temp
 
 nT = (pT*vT)/(R*tT) # nT = (pT*vT)/(R*tT)
 
