@@ -10,4 +10,6 @@ pest_derive = "*"
 lazy_static = "*"
 petgraph = "*"
 itertools = "*"
+serde = "1.0.114"
+ron = "0.6.0"
 

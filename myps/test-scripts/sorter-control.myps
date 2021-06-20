@@ -1,24 +1,27 @@
 sorter          = d0
-requestDownLMem = d1
-requestDownRMem = d2
-requestUpMem    = d3
+requestDownLMem = d1 # Downward request handler (sorter IC housing)
+requestDownRMem = d2 # This sorter's fabricator controller (IC housing)
+requestUpMem    = d3 # Upward request handler (IC housing)
 
-fix wordA = 0 # Bitwise-or word A
-fix wordB = 0 # Bitwise-or word B
-fix wordOr = 0 # Bitwise-or output
-
-loop:
-    if sorter(0).Occupied:
-        hash = sorter(0).OccupantHash
-        # TODO: hash sorting
-        output = (hash == 123)
-        sorter.Output = output
-    wordA = requestDownLMem.Setting
-    wordB = requestDownRMem.Setting
-    if (wordA > 0) or (wordB > 0): # send downward request up
+loop: # main loop
+    fix wordDownL = requestDownLMem.Setting
+    fix wordDownR = requestDownRMem.Setting
+    hash = sorter(0).OccupantHash
+    if hash > 0:
+        # TODO: get bit position from occupant hash, get bit from right request, set output
+        x = 0
+        push(123)
+        x = peek()
+        x = pop()
+    # Send downward requests up:
+    fix wordOr = 0
+    # Bit-or the down-left and down-right request words
+    if (wordDownL > 0) or (wordDownR > 0):
         fix i = 0 # Bitwise or words A and B
-        while (wordA > 0) or (wordB > 0): # while words non-zero
-            bitA, wordA = wordA % 2, trunc(wordA / 2) # get word A bit and shift
-            bitB, worbB = wordB % 2, trunc(wordB / 2) # get word B bit and shift
-            wordOr += (bitA or bitB) * i # add or'd bit
-            i *= 2 # "increment" bit position
+        while (wordDownL > 0) or (wordDownR > 0): # While words non-zero
+            fix bitL, wordDownL = wordDownL % 2, trunc(wordDownL / 2) # Get word A bit and shift
+            fix bitR, worbDownR = wordDownR % 2, trunc(wordDownR / 2) # Get word B bit and shift
+            wordOr += (bitL or bitR) * i # Add or'd bit
+            i *= 2 # "Increment" bit position
+    requestUpMem.Setting = wordOr
+    yield()

@@ -13,12 +13,12 @@ pub use error::{MypsLexerError, MypsLexerResult};
 
 fn parse_line_pair(
     line_pair: Pair<Rule>,
-) -> MypsLexerResult<Option<(usize, Pair<Rule>, Option<String>)>> {
+) -> MypsLexerResult<Option<(usize, Option<Pair<Rule>>, Option<String>)>> {
     match line_pair.as_rule() {
         Rule::line => {
             let pairs = line_pair.into_inner();
             let mut indent = 0;
-            let mut item_pair_opt = None;
+            let mut item_opt = None;
             let mut comment_opt = None;
             for pair in pairs {
                 match pair.as_rule() {
@@ -26,13 +26,10 @@ fn parse_line_pair(
                         indent += 1;
                     }
                     Rule::item => {
-                        item_pair_opt = Some(pair.only_inner()?);
+                        item_opt = Some(pair.only_inner()?);
                     }
                     Rule::comment => {
                         comment_opt = Some(pair.as_str().into());
-                    }
-                    Rule::empty => {
-                        return Ok(None);
                     }
                     _ => {
                         let err = MypsLexerError::wrong_rule(
@@ -44,13 +41,7 @@ fn parse_line_pair(
                     }
                 }
             }
-            if let Some(item_pair) = item_pair_opt {
-                Ok(Some((indent, item_pair, comment_opt)))
-            } else {
-                let err: MypsLexerError = AstError::NotEnoughPairs.into();
-                unreachable!("{:?}", err);
-                // err
-            }
+            Ok(Some((indent, item_opt, comment_opt)))
         }
         Rule::EOI => Ok(None),
         _ => {
@@ -78,11 +69,11 @@ fn compile_program_item(
         .into_inner()
         .map(parse_line_pair)
         // .collect::<MypsLexerResult<Vec<Option<(usize, Pair<Rule>, Option<String>)>>>>()?
-        .collect::<MypsLexerResult<Vec<Option<(usize, Pair<Rule>, Option<String>)>>>>()
+        .collect::<MypsLexerResult<Vec<Option<(usize, Option<Pair<Rule>>, Option<String>)>>>>()
         .unwrap()
         .into_iter()
         .flatten()
-        .collect::<Vec<(usize, Pair<Rule>, Option<String>)>>();
+        .collect::<Vec<(usize, Option<Pair<Rule>>, Option<String>)>>();
 
     let mut functions = HashMap::new();
     let mut block_items = vec![(Vec::new(), None)];
@@ -169,7 +160,7 @@ fn compile_program_item(
         Ok(())
     }
 
-    for (indent, item_pair, comment_opt) in lines.into_iter() {
+    for (indent, item_opt, comment_opt) in lines.into_iter() {
         // Handle indentation
         if expect_indent {
             // Expecting increase in indent because previous line was a branch marker
@@ -206,61 +197,66 @@ fn compile_program_item(
             }
         }
         // Handle item
-        match item_pair.as_rule() {
-            Rule::branch => {
-                // let mut branch = item_pair.try_into_ast()?;
-                let mut branch = item_pair.try_into_ast().unwrap();
+        if let Some(item_pair) = item_opt {
+            match item_pair.as_rule() {
+                Rule::branch => {
+                    // let mut branch = item_pair.try_into_ast()?;
+                    let mut branch = item_pair.try_into_ast().unwrap();
 
-                match &mut branch {
-                    Branch::Program | Branch::Loop | Branch::Def(..) => {}
-                    Branch::If(id, cond) => {
-                        compile_expr(cond).unwrap();
-                        if_elif_else_index += 1;
-                        *id = if_elif_else_index as usize;
-                    }
-                    Branch::Elif(id, cond) => {
-                        if !had_if_or_elif(&block_items) {
-                            let err = MypsLexerError::misplaced_elif();
-                            panic!("{:?}", err);
-                            // return Err(err);
+                    match &mut branch {
+                        Branch::Program | Branch::Loop | Branch::Def(..) => {}
+                        Branch::If(id, cond) => {
+                            compile_expr(cond).unwrap();
+                            if_elif_else_index += 1;
+                            *id = if_elif_else_index as usize;
                         }
-                        compile_expr(cond).unwrap();
-                        *id = get_if_or_elif_index(&block_items);
-                    }
-                    Branch::Else(id) => {
-                        if !had_if_or_elif(&block_items) {
-                            let err = MypsLexerError::misplaced_else();
-                            panic!("{:?}", err);
-                            // return Err(err);
+                        Branch::Elif(id, cond) => {
+                            if !had_if_or_elif(&block_items) {
+                                let err = MypsLexerError::misplaced_elif();
+                                panic!("{:?}", err);
+                                // return Err(err);
+                            }
+                            compile_expr(cond).unwrap();
+                            *id = get_if_or_elif_index(&block_items);
                         }
-                        *id = get_if_or_elif_index(&block_items);
-                    }
-                    Branch::While(cond) => {
-                        compile_expr(cond).unwrap();
-                    }
-                    Branch::For(name, s, e, step_opt) => {
-                        compile_expr(s).unwrap();
-                        compile_expr(e).unwrap();
-                        if let Some(step) = &step_opt {
-                            compile_expr(step).unwrap();
+                        Branch::Else(id) => {
+                            if !had_if_or_elif(&block_items) {
+                                let err = MypsLexerError::misplaced_else();
+                                panic!("{:?}", err);
+                                // return Err(err);
+                            }
+                            *id = get_if_or_elif_index(&block_items);
                         }
+                        Branch::While(cond) => {
+                            compile_expr(cond).unwrap();
+                        }
+                        Branch::For(name, s, e, step_opt) => {
+                            compile_expr(s).unwrap();
+                            compile_expr(e).unwrap();
+                            if let Some(step) = &step_opt {
+                                compile_expr(step).unwrap();
+                            }
+                        }
+                        Branch::Function(name) => unreachable!("{:?}", name),
                     }
-                    Branch::Function(name) => unreachable!("{:?}", name),
+                    block_items.push((Vec::new(), comment_opt));
+                    branches.push(branch);
+                    expect_indent = true;
                 }
-                block_items.push((Vec::new(), comment_opt));
-                branches.push(branch);
-                expect_indent = true;
+                Rule::stmt => {
+                    let stmt = item_pair.try_into_ast()?;
+                    let (head_items, _) = block_items.last_mut().unwrap();
+                    head_items.push(Item::statement(stmt, comment_opt));
+                }
+                _ => {
+                    let err = MypsLexerError::wrong_rule("a block or statement", item_pair);
+                    unreachable!("{:?}", err);
+                    // return Err(err);
+                }
             }
-            Rule::stmt => {
-                let stmt = item_pair.try_into_ast()?;
-                let (head_items, _) = block_items.last_mut().unwrap();
-                head_items.push(Item::statement(stmt, comment_opt));
-            }
-            _ => {
-                let err = MypsLexerError::wrong_rule("a block or statement", item_pair);
-                unreachable!("{:?}", err);
-                // return Err(err);
-            }
+        } else {
+            let (head_items, _) = block_items.last_mut().unwrap();
+            head_items.push(Item::statement(Statement::Empty, comment_opt));
         }
     }
 
@@ -285,6 +281,7 @@ fn compile_program_item(
 pub fn lex_program_pair(
     program_pair: Pair<Rule>,
 ) -> MypsLexerResult<(Item, HashMap<String, (Block, Option<String>)>)> {
+    println!("{:#?}", program_pair);
     let (program_item, functions) = compile_program_item(program_pair).unwrap();
 
     let mut aliases = HashSet::new();

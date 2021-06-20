@@ -148,7 +148,9 @@ stmt = !{ stmt_assign_self | stmt_assign_value | stmt_func }
         stmt_func_nullary = { (f_hcf | f_yield) ~ "(" ~ ")" }
             f_hcf   = { "hcf" }
             f_yield = { "yield" }
-        stmt_func_unary = { ("push" | "sleep") ~ "(" ~ rv ~ ")" }
+        stmt_func_unary = { (f_push | f_sleep) ~ "(" ~ rv ~ ")" }
+            f_push  = { "push" }
+            f_sleep = { "sleep" }
         stmt_func_user = { var ~ "(" ~ ")" }
 
 /* A branch */
@@ -161,10 +163,9 @@ branch = !{ ( b_loop | b_if | b_elif | b_else | b_while | b_for  | b_def ) ~ ":"
     b_for   = { "for" ~ var ~ "in" ~ "(" ~ expr ~ ":" ~ expr ~ (":" ~ expr)? ~ ")" }
     b_def   = { "def" ~ var }
 
-line = ${ empty | (indent* ~ item ~ WHITESPACE* ~ comment? ~ NEWLINE) }
-    empty = ${ WHITESPACE* ~ WHITESPACE* ~ comment* ~ NEWLINE }
+line = ${ indent* ~ item? ~ WHITESPACE* ~ comment? ~ NEWLINE }
     indent = @{ "    " }
-    item = ${ branch | stmt } /* NOTE: Non-atomic starts here */
+    item = ${ branch | stmt }
 
 program = ${
     SOI ~

@@ -55,28 +55,33 @@ fn main() {
     let args = std::env::args().collect::<Vec<String>>();
     let path = &args[1];
     let source = std::fs::read_to_string(path).unwrap();
-    // let source = "nF = FurnaceHash.sum.TotalMoles # Furnace moles";
-    for line in source.split("\n") {
-        println!("# {}", line);
-    }
-    println!("# ==========================");
+    // let source = "push(123)";
+
+    // for line in source.split("\n") {
+    //     println!("# {}", line);
+    // }
+    // println!("# ==========================");
 
     // PARSER TEST
     let rule = Rule::program;
-    // let rule = Rule::line;
+    // let rule = Rule::stmt;
     // let rule = Rule::expr_line;
     // let rule = Rule::rv_expr_line;
     // let rule = Rule::stmt_assign_value_line;
-    let peg = MypsParser::parse(rule, &source);
+    let peg = MypsParser::parse(rule, &source).unwrap();
     // println!("{:#?}", peg);
 
     // LEXER TEST
-    let program_pair = peg.unwrap().only_inner().unwrap();
+    let program_pair = peg.only_inner().unwrap();
     let (program_item, functions) = lex_program_pair(program_pair).unwrap();
 
     // // TRANSLATOR TEST
-    let mut translator = Translator::translate(program_item, functions);
-    println!("{:#?}", translator);
+    let conf_path = "translator.ron";
+    let conf_string = std::fs::read_to_string(conf_path).unwrap();
+    let conf = ron::from_str(&conf_string).unwrap();
+
+    let mut translator = Translator::translate(conf, program_item, functions).unwrap();
+    // println!("{:#?}", translator);
     // println!("# ==========================");
 
     for (i, unit) in translator.units.iter().enumerate() {

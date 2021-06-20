@@ -8,6 +8,7 @@ use std::{
     fmt::{Debug, Display},
 };
 
+use serde::{Serialize, Deserialize};
 use itertools::join;
 
 use crate::superprelude::*;
@@ -111,13 +112,13 @@ impl From<UnitDevNet> for UnitNum {
 }
 
 impl TryFrom<UnitReturn> for UnitNum {
-    type Error = ();
+    type Error = MypsLexerError;
 
-    fn try_from(rtn: UnitReturn) -> Result<Self, ()> {
+    fn try_from(rtn: UnitReturn) -> MypsLexerResult<Self> {
         match rtn {
             UnitReturn::Num(unit_num) => Ok(unit_num),
             UnitReturn::Var(unit_var) => Ok(UnitNum::Var(unit_var)),
-            _ => Err(()),
+            _ => Err(MypsLexerError::failed_conversion("a unit number variant unit return", rtn)),
         }
     }
 }
@@ -164,13 +165,12 @@ impl Display for UnitDev {
 }
 
 impl TryFrom<UnitReturn> for UnitDev {
-    type Error = ();
+    type Error = MypsLexerError;
 
-    fn try_from(rtn: UnitReturn) -> Result<Self, ()> {
-        if let UnitReturn::Dev(unit_dev) = rtn {
-            Ok(unit_dev)
-        } else {
-            Err(())
+    fn try_from(rtn: UnitReturn) -> MypsLexerResult<Self> {
+        match rtn {
+            UnitReturn::Dev(unit_dev) => Ok(unit_dev),
+            _ => Err(MypsLexerError::failed_conversion("a unit device variant unit return", rtn)),
         }
     }
 }
@@ -215,13 +215,12 @@ impl Display for UnitDevNet {
 }
 
 impl TryFrom<UnitReturn> for UnitDevNet {
-    type Error = ();
+    type Error = MypsLexerError;
 
-    fn try_from(rtn: UnitReturn) -> Result<Self, ()> {
-        if let UnitReturn::Net(unit_dev_net) = rtn {
-            Ok(unit_dev_net)
-        } else {
-            Err(())
+    fn try_from(rtn: UnitReturn) -> MypsLexerResult<Self> {
+        match rtn {
+            UnitReturn::Net(unit_dev_net) => Ok(unit_dev_net),
+            _ => Err(MypsLexerError::failed_conversion("a unit network device variant unit return", rtn)),
         }
     }
 }
@@ -345,12 +344,31 @@ impl UnitArg {
     }
 }
 
+impl From<UnitReturn> for UnitArg {
+    fn from(unit_return: UnitReturn) -> Self {
+        match unit_return {
+            UnitReturn::Num(unit_num) => Self::UnitNum(unit_num),
+            UnitReturn::Dev(unit_dev) => Self::UnitDev(unit_dev),
+            UnitReturn::Net(unit_net) => Self::UnitDevNet(unit_net),
+            UnitReturn::Var(unit_var) => Self::UnitVar(unit_var),
+        }
+    }
+}
+
 // ================================================================================================
 // Unit expression enumeration
 // ================================================================================================
 
 // Unit expression enumeration and implementation helper macro.
 macro_rules! def_impl_unit_expr {
+    (@try_from_pair $variant:ident, $nargs:literal, $disp:literal, $args:ident) => {{
+        let n_args = $args.len();
+        if n_args != $nargs {
+            return Err(MypsLexerError::wrong_num_args($disp, 0, $nargs));
+        }
+        Ok(Self::$variant($args.try_into().unwrap()))
+    }};
+
     ($(
         ($variant:ident, $nargs:literal, $disp:literal, $new:ident, [
             $(($argty:ty, $arg:ident)),*
@@ -361,6 +379,7 @@ macro_rules! def_impl_unit_expr {
             $(
                 $variant([UnitArg; $nargs]),
             )*
+            Empty,
             Dummy,
         }
 
@@ -371,10 +390,22 @@ macro_rules! def_impl_unit_expr {
                 }
             )*
 
+            pub fn try_from_pair(name: String, args: Vec<UnitArg>) -> MypsLexerResult<Self> {
+                match name.as_str() {
+                    $(
+                        $disp => def_impl_unit_expr!(@try_from_pair $variant, $nargs, $disp, args),
+                    )*
+                    "empty" => Ok(Self::Empty),
+                    "dummy" => Ok(Self::Dummy),
+                    _ => Err(MypsLexerError::undefined_function(&name)),
+                }
+            }
+
             /// Iterator over references to the arguments of this unit expression.
             pub fn iter_args<'a>(&'a self) -> Box<dyn Iterator<Item = &UnitArg> + 'a> {
                 match self {
                     $( UnitExpr::$variant(args) => Box::new(args.iter()), )*
+                    UnitExpr::Empty => Box::new(std::iter::empty()),
                     UnitExpr::Dummy => Box::new(std::iter::empty()),
                 }
             }
@@ -383,6 +414,7 @@ macro_rules! def_impl_unit_expr {
             pub fn iter_args_mut<'a>(&'a mut self) -> Box<dyn Iterator<Item = &mut UnitArg> + 'a> {
                 match self {
                     $( UnitExpr::$variant(args) => Box::new(args.iter_mut()), )*
+                    UnitExpr::Empty => Box::new(std::iter::empty()),
                     UnitExpr::Dummy => Box::new(std::iter::empty()),
                 }
             }
@@ -392,6 +424,7 @@ macro_rules! def_impl_unit_expr {
             pub fn last(&self) -> Option<&UnitArg> {
                 match self {
                     $( UnitExpr::$variant(args) => args.last(), )*
+                    UnitExpr::Empty => None,
                     UnitExpr::Dummy => None,
                 }
             }
@@ -401,6 +434,7 @@ macro_rules! def_impl_unit_expr {
             pub fn last_mut(&mut self) -> Option<&mut UnitArg> {
                 match self {
                     $( UnitExpr::$variant(args) => args.last_mut(), )*
+                    UnitExpr::Empty => None,
                     UnitExpr::Dummy => None,
                 }
             }
@@ -413,6 +447,7 @@ macro_rules! def_impl_unit_expr {
                         write!(f, $disp)?;
                         write!(f, " {}", join(args.iter().map(UnitArg::to_string), " "))
                     },)*
+                    UnitExpr::Empty => write!(f, ""),
                     UnitExpr::Dummy => write!(f, "(dummy)"),
                 }
             }
@@ -542,9 +577,9 @@ def_impl_unit_expr!(
     // (Xor
 
     // Stack
-    // (Peek
-    // (Pop
-    // (Push
+    (Peek,   1, "peek",   new_peek,   [(UnitVar, r)]),
+    (Pop,    1, "pop",    new_pop,    [(UnitVar, r)]),
+    (Push,   1, "push",   new_push,   [(UnitNum, a)]),
 
     // Misc
     (Alias,  2, "alias",  new_alias,  [(String, a), (UnitDev, d)]),
@@ -635,10 +670,11 @@ impl Unit {
 
 impl Display for Unit {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if let Some(comment) = &self.comment {
-            write!(f, "{} {}", self.unit_expr, comment)
-        } else {
-            write!(f, "{}", self.unit_expr)
+        match (&self.unit_expr, &self.comment) {
+            (UnitExpr::Empty, Some(comment)) => write!(f, "{}", comment),
+            (UnitExpr::Empty, None         ) => write!(f, ""),
+            (expr,            Some(comment)) => write!(f, "{} {}", expr, comment),
+            (expr,            None         ) => write!(f, "{}", expr),
         }
     }
 }
@@ -654,7 +690,7 @@ impl Debug for Unit {
 }
 
 // ================================================================================================
-// Translator
+// UnitAlias and UnitAliasKey
 // ================================================================================================
 
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -689,34 +725,34 @@ impl From<&UnitVar> for UnitAliasKey {
 }
 
 impl TryFrom<LValue> for UnitAliasKey {
-    type Error = ();
+    type Error = MypsLexerError;
 
-    fn try_from(l_value: LValue) -> Result<Self, ()> {
+    fn try_from(l_value: LValue) -> MypsLexerResult<Self> {
         match l_value {
             LValue::Var(k, _) => Ok(UnitAliasKey::String(k)),
-            _ => Err(()),
+            _ => Err(MypsLexerError::failed_conversion("a unit var variant l-value", l_value)),
         }
     }
 }
 
 impl TryFrom<UnitNum> for UnitAliasKey {
-    type Error = ();
+    type Error = MypsLexerError;
 
-    fn try_from(unit_num: UnitNum) -> Result<Self, ()> {
+    fn try_from(unit_num: UnitNum) -> MypsLexerResult<Self> {
         match unit_num {
             UnitNum::Var(unit_var) => Ok(unit_var.into()),
-            _ => Err(()),
+            _ => Err(MypsLexerError::failed_conversion("a unit var variant unit number", unit_num)),
         }
     }
 }
 
 impl TryFrom<UnitDev> for UnitAliasKey {
-    type Error = ();
+    type Error = MypsLexerError;
 
-    fn try_from(unit_dev: UnitDev) -> Result<Self, ()> {
+    fn try_from(unit_dev: UnitDev) -> MypsLexerResult<Self> {
         match unit_dev {
             UnitDev::Var(unit_var) => Ok(unit_var.into()),
-            _ => Err(()),
+            _ => Err(MypsLexerError::failed_conversion("a unit var variant unit device", unit_dev)),
         }
     }
 }
@@ -759,6 +795,49 @@ impl Debug for UnitAlias {
     }
 }
 
+// ================================================================================================
+// Translator
+// ================================================================================================
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct TranslatorConf {
+    // Display lines that are entirely empty
+    pub show_empty: bool,
+
+    // Display comments on lines
+    pub show_comments: bool,
+
+    // Display lines that have no statement, but have comments
+    pub show_empty_comments: bool,
+}
+
+impl TranslatorConf {
+    pub fn show_empty(mut self) -> Self {
+        self.show_empty = true;
+        self
+    }
+
+    pub fn show_comments(mut self) -> Self {
+        self.show_comments = true;
+        self
+    }
+
+    pub fn show_empty_comments(mut self) -> Self {
+        self.show_empty_comments = true;
+        self
+    }
+}
+
+impl Default for TranslatorConf {
+    fn default() -> Self {
+        Self {
+            show_empty: false,
+            show_comments: false,
+            show_empty_comments: false,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Translator {
     pub units: Vec<Unit>,
@@ -768,15 +847,30 @@ pub struct Translator {
     pub vars_fixed: Vec<usize>,
     pub branch_tails: Vec<usize>,
     pub line_lookup: HashMap<String, usize>,
+
+    pub conf: TranslatorConf,
 }
 
 mod optimize;
 
 impl Translator {
+    pub fn new(conf: TranslatorConf) -> Self {
+        Self {
+            units: Vec::new(),
+            aliases: HashMap::new(),
+            var_next_id: 0,
+            var_lifetimes: Vec::new(),
+            vars_fixed: Vec::new(),
+            branch_tails: Vec::new(),
+            line_lookup: HashMap::new(),
+
+            conf,
+        }
+    }
 
     /// Translate a top-level item, treating it as the program block.
-    pub fn translate(program_item: Item, functions: HashMap<String, (Block, Option<String>)>) -> Self {
-        let mut translator = Self::new();
+    pub fn translate(conf: TranslatorConf, program_item: Item, functions: HashMap<String, (Block, Option<String>)>) -> MypsLexerResult<Self> {
+        let mut translator = Self::new(conf);
 
         // Reserve a line number for each user function
         for (i, k) in functions.keys().enumerate() {
@@ -785,12 +879,12 @@ impl Translator {
         }
 
         // Translate the program item
-        translator.translate_item(program_item, None);
+        translator.translate_item(program_item, None)?;
 
         // Insert the functions
         for (_, (function, comment)) in functions {
             let item = Item::block(function, comment);
-            translator.translate_item(item, None);
+            translator.translate_item(item, None)?;
             // let i = translator.line_lookup[&name];
             // translator.branch_tails[i] = translator.units.len();
         }
@@ -818,19 +912,7 @@ impl Translator {
             // }
         }
 
-        translator
-    }
-
-    pub fn new() -> Self {
-        Self {
-            units: Vec::new(),
-            aliases: HashMap::new(),
-            var_next_id: 0,
-            var_lifetimes: Vec::new(),
-            vars_fixed: Vec::new(),
-            branch_tails: Vec::new(),
-            line_lookup: HashMap::new(),
-        }
+        Ok(translator)
     }
 
     fn insert_alias<K: Into<UnitAliasKey>>(&mut self, k: K, alias: UnitAlias) {
@@ -838,16 +920,19 @@ impl Translator {
     }
 
     /// Parse, lex and translate a MYPS source string.
-    pub fn parse_lex_and_translate(source: &str) -> MypsLexerResult<Self> {
+    pub fn parse_lex_and_translate(conf: TranslatorConf, source: &str) -> MypsLexerResult<Self> {
         let peg = MypsParser::parse(Rule::program, source)?;
         let program_pair = peg.only_inner()?;
         let (program_item, functions) = lex_program_pair(program_pair)?;
-        let translator = Translator::translate(program_item, functions);
-        Ok(translator)
+        Translator::translate(conf, program_item, functions)
     }
 
     fn push_unit(&mut self, unit_expr: UnitExpr, comment: Option<String>) {
-        self.units.push(Unit::new(unit_expr, comment));
+        if self.conf.show_comments {
+            self.units.push(Unit::new(unit_expr, comment));
+        } else {
+            self.units.push(Unit::new(unit_expr, None));
+        }
     }
 
     pub fn optimize(&mut self) {}
@@ -910,6 +995,13 @@ impl Translator {
         }
     }
 
+    // Update a unit var lifetime
+    fn update_lifetime<V: TryInto<UnitVar>>(&mut self, v: V) {
+        if let Ok(unit_var) = v.try_into() {
+            self.var_lifetimes[unit_var.0].1 = self.units.len();
+        }
+    }
+
     // Lookup a unit var (updating a var's lifetime)
     fn get_var<K: Into<UnitAliasKey> + Debug>(&mut self, k: K, fix: bool) -> UnitVar {
         let unit_var = if fix {
@@ -930,15 +1022,8 @@ impl Translator {
         unit_var
     }
 
-    // Update a unit var lifetime
-    fn update_lifetime<V: TryInto<UnitVar>>(&mut self, v: V) {
-        if let Ok(unit_var) = v.try_into() {
-            self.var_lifetimes[unit_var.0].1 = self.units.len();
-        }
-    }
-
-    fn get_dev(&mut self, r_value: RValue) -> Result<(UnitDev, usize), ()> {
-        let (rv_rtn, rv_depth) = self.translate_r_value(r_value, None, &mut None);
+    fn get_dev(&mut self, r_value: RValue) -> MypsLexerResult<(UnitDev, usize)> {
+        let (rv_rtn, rv_depth) = self.translate_r_value(r_value, None, &mut None)?;
         let unit_dev = match rv_rtn {
             UnitReturn::Num(unit_num) => {
                 match unit_num {
@@ -947,7 +1032,8 @@ impl Translator {
                 }
             },
             UnitReturn::Dev(unit_dev) => unit_dev,
-            UnitReturn::Net(_unit_net) => return Err(()),
+            // TODO: specialize this error, and/or simplify this API
+            UnitReturn::Net(_unit_net) => return Err(MypsLexerError::Dummy),
             UnitReturn::Var(unit_var) => UnitDev::Var(unit_var),
         };
         Ok((unit_dev, rv_depth))
@@ -969,89 +1055,73 @@ impl Translator {
 
     // Lookup a unit number (updating a var's lifetime)
     fn lookup_num<K: Into<UnitAliasKey>>(&mut self, k: K) -> MypsLexerResult<UnitNum> {
-        let alias = self.lookup_alias(k).unwrap();
+        let alias = self.lookup_alias(k)?;
         match alias {
             UnitAlias::Num(unit_num) => Ok(unit_num),
             UnitAlias::Var(var) => Ok(UnitNum::Var(var)),
             // _ => unreachable!("{:?}", alias),
-            _ => {
-                let err = Err(MypsLexerError::wrong_alias("UnitNum", alias));
-                Err(err.unwrap())
-                // Err(err)
-            }
+            _ => Err(MypsLexerError::failed_conversion("an aliased unit number", alias)),
         }
     }
 
     // Lookup a unit device (updating a var's lifetime)
     fn lookup_dev<K: Into<UnitAliasKey>>(&mut self, k: K) -> MypsLexerResult<UnitDev> {
-        let alias = self.lookup_alias(k).unwrap();
+        let alias = self.lookup_alias(k)?;
         match alias {
             UnitAlias::Dev(unit_dev) => Ok(unit_dev),
             UnitAlias::Var(var) => Ok(UnitDev::Var(var)),
             // UnitAlias::Num(i) => UnitDev::Lit(i as usize),
             // _ => unreachable!("{:?}", alias),
-            _ => {
-                let err = Err(MypsLexerError::wrong_alias("UnitDev", alias));
-                Err(err.unwrap())
-                // Err(err)
-            }
+            _ => Err(MypsLexerError::failed_conversion("an aliased unit device", alias)),
         }
     }
 
     fn lookup_dev_net<K: Into<UnitAliasKey>>(&mut self, k: K) -> MypsLexerResult<UnitDevNet> {
-        let alias = self.lookup_alias(k).unwrap();
+        let alias = self.lookup_alias(k)?;
         match alias {
             UnitAlias::Net(unit_dev_net) => Ok(unit_dev_net),
             UnitAlias::Var(var) => Ok(UnitDevNet::Var(var)),
             // UnitAlias::Num(i) => UnitDevNet::Lit(i as i64),
             // _ => unreachable!("{:?}", alias),
-            _ => {
-                let err = Err(MypsLexerError::wrong_alias("UnitDevNet", alias));
-                Err(err.unwrap())
-                // Err(err)
-            }
+            _ => Err(MypsLexerError::failed_conversion("an aliased unit network device", alias)),
         }
     }
 
     fn lookup_var<K: Into<UnitAliasKey>>(&mut self, k: K) -> MypsLexerResult<UnitVar> {
-        let alias = self.lookup_alias(k).unwrap();
+        let alias = self.lookup_alias(k)?;
         match alias {
             UnitAlias::Var(unit_var) => Ok(unit_var),
-            _ => {
-                let err = Err(MypsLexerError::wrong_alias("UnitVar", alias));
-                Err(err.unwrap())
-                // Err(err)
-            }
+            _ => Err(MypsLexerError::failed_conversion("an aliased unit var", alias)),
         }
     }
 
     // ============================================================================================
     // Translate a unit intenger (UnitInt)
     // ============================================================================================
-    fn translate_int(&mut self, int: Int) -> UnitNum {
+    fn translate_int(&mut self, int: Int) -> MypsLexerResult<UnitNum> {
         match int {
-            Int::Lit(n) => UnitNum::Lit(n as f64),
-            Int::Var(k) => self.lookup_num(k).unwrap().clone(),
+            Int::Lit(n) => Ok(UnitNum::Lit(n as f64)),
+            Int::Var(k) => Ok(self.lookup_num(k)?.clone()),
         }
     }
 
     // ============================================================================================
     // Translate a unit device (UnitDev)
     // ============================================================================================
-    fn translate_dev(&mut self, dev: Dev) -> (UnitDev, usize) {
+    fn translate_dev(&mut self, dev: Dev) -> MypsLexerResult<(UnitDev, usize)> {
         match dev {
             Dev::Lit(box r_value) => {
-                let (rtn, num_depth) = self.translate_r_value(r_value, None, &mut None);
+                let (rtn, num_depth) = self.translate_r_value(r_value, None, &mut None)?;
                 let num = UnitNum::try_from(rtn).unwrap();
                 // let unit_dev = UnitDev
                 let unit_dev = match num {
                     UnitNum::Lit(n) => UnitDev::Lit(n as u64),
                     UnitNum::Var(v) => UnitDev::Var(v),
                 };
-                (unit_dev, num_depth)
+                Ok((unit_dev, num_depth))
             }
-            Dev::Var(k) => (self.lookup_dev(k).unwrap().clone(), 0),
-            Dev::DB => (UnitDev::DB, 0),
+            Dev::Var(k) => Ok((self.lookup_dev(k).unwrap().clone(), 0)),
+            Dev::DB => Ok((UnitDev::DB, 0)),
             _ => unreachable!("{:?}", dev),
         }
     }
@@ -1059,18 +1129,18 @@ impl Translator {
     // ============================================================================================
     // Translate a unit network device (UnitDevNet)
     // ============================================================================================
-    fn translate_dev_net(&mut self, dev: Dev) -> (UnitDevNet, usize) {
+    fn translate_dev_net(&mut self, dev: Dev) -> MypsLexerResult<(UnitDevNet, usize)> {
         match dev {
             Dev::Net(box r_value) => {
-                let (rtn, num_depth) = self.translate_r_value(r_value, None, &mut None);
+                let (rtn, num_depth) = self.translate_r_value(r_value, None, &mut None)?;
                 let num = UnitNum::try_from(rtn).unwrap();
                 let unit_dev_net = match num {
                     UnitNum::Lit(n) => UnitDevNet::Lit(n as i64),
                     UnitNum::Var(v) => UnitDevNet::Var(v),
                 };
-                (unit_dev_net, num_depth)
+                Ok((unit_dev_net, num_depth))
             }
-            Dev::Var(k) => (self.lookup_dev_net(k).unwrap().clone(), 0),
+            Dev::Var(k) => Ok((self.lookup_dev_net(k).unwrap().clone(), 0)),
             _ => unreachable!("{:?}", dev),
         }
     }
@@ -1111,82 +1181,84 @@ impl Translator {
         r_value: RValue,
         unit_var: Option<UnitVar>,
         comment: &mut Option<String>,
-    ) -> (UnitReturn, usize) {
+    ) -> MypsLexerResult<(UnitReturn, usize)> {
         match r_value {
             RValue::Num(num) => {
                 let num = match num {
                     Num::Lit(n) => UnitNum::Lit(n),
                     Num::Var(k) => {
-                        let num = self.lookup_num(k).unwrap();
+                        let num = self.lookup_num(k)?;
                         // self.update_lifetime_mem(&mem);
                         num.clone()
                     }
                 };
-                (UnitReturn::Num(num), 0)
+                Ok((UnitReturn::Num(num), 0))
             }
             RValue::Dev(dev) => match dev {
                 Dev::Lit(box id_r_value) => {
-                    let (id_rtn, depth) = self.translate_r_value(id_r_value, None, comment);
+                    let (id_rtn, depth) = self.translate_r_value(id_r_value, None, comment)?;
                     let unit_dev = match id_rtn {
                         UnitReturn::Num(UnitNum::Lit(n)) => UnitDev::Lit(n as u64),
                         UnitReturn::Num(UnitNum::Var(v)) => UnitDev::Var(v),
                         _ => unreachable!("{:?}", id_rtn),
                     };
-                    (UnitReturn::Dev(unit_dev), depth)
+                    Ok((UnitReturn::Dev(unit_dev), depth))
                 }
                 Dev::Net(box hash_r_value) => {
-                    let (hash_rtn, depth) = self.translate_r_value(hash_r_value, None, comment);
+                    let (hash_rtn, depth) = self.translate_r_value(hash_r_value, None, comment)?;
                     let unit_dev_net = match hash_rtn {
                         UnitReturn::Num(UnitNum::Lit(n)) => UnitDevNet::Lit(n as i64),
                         UnitReturn::Num(UnitNum::Var(v)) => UnitDevNet::Var(v),
                         _ => unreachable!("{:?}", hash_rtn),
                     };
-                    (UnitReturn::Net(unit_dev_net), depth)
+                    Ok((UnitReturn::Net(unit_dev_net), depth))
                 }
                 Dev::DB => {
-                    return (UnitReturn::Dev(UnitDev::DB), 0);
+                    Ok((UnitReturn::Dev(UnitDev::DB), 0))
                 }
                 Dev::Var(k) => {
-                    let alias = self.lookup_alias(k).unwrap();
+                    let alias = self.lookup_alias(k)?;
                     let unit_return = match alias {
                         UnitAlias::Num(..) => unreachable!("{:?}", alias),
                         UnitAlias::Dev(unit_dev) => UnitReturn::Dev(unit_dev),
                         UnitAlias::Net(unit_dev_net) => UnitReturn::Net(unit_dev_net),
                         UnitAlias::Var(..) => unreachable!("{:?}", alias),
                     };
-                    (unit_return, 0)
+                    Ok((unit_return, 0))
                 }
             },
             RValue::NetParam(dev, mode, param) => {
-                let (dev, dev_depth) = self.translate_dev_net(dev);
+                let (dev, dev_depth) = self.translate_dev_net(dev)?;
                 let var = self.unwrap_var(unit_var);
                 let unit_expr = UnitExpr::new_lb(var, dev, param, mode);
                 self.push_unit(unit_expr, comment.take());
-                (UnitReturn::Var(var), 1 + dev_depth)
+                Ok((UnitReturn::Var(var), 1 + dev_depth))
             }
             RValue::DevParam(dev, param) => {
-                let (dev, dev_depth) = self.translate_dev(dev);
+                let (dev, dev_depth) = self.translate_dev(dev)?;
                 let var = self.unwrap_var(unit_var);
                 let unit_expr = UnitExpr::new_l(var, dev, param);
                 self.push_unit(unit_expr, comment.take());
-                (UnitReturn::Var(var), 1 + dev_depth)
+                Ok((UnitReturn::Var(var), 1 + dev_depth))
             }
             RValue::DevSlot(dev, slot, param) => {
-                let (dev, dev_depth) = self.translate_dev(dev);
-                let slot = self.translate_int(slot);
+                let (dev, dev_depth) = self.translate_dev(dev)?;
+                let slot = self.translate_int(slot)?;
                 let var = self.unwrap_var(unit_var);
                 let unit_expr = UnitExpr::new_ls(var, dev, slot, param);
                 self.push_unit(unit_expr, comment.take());
-                (UnitReturn::Var(var), 1 + dev_depth)
+                Ok((UnitReturn::Var(var), 1 + dev_depth))
             }
             RValue::Expr(box expr) => {
-                let (unit_num, depth) = self.translate_expr(expr, unit_var, comment);
-                (UnitReturn::Num(unit_num), depth)
+                let (unit_num, depth) = self.translate_expr(expr, unit_var, comment)?;
+                Ok((UnitReturn::Num(unit_num), depth))
             }
             RValue::Func(rv_func, r_values) => {
                 let (mut arg_returns, arg_depths): (Vec<UnitReturn>, Vec<usize>) = r_values
                     .into_iter()
                     .map(|r_value| self.translate_r_value(r_value, None, comment))
+                    .collect::<MypsLexerResult<Vec<(UnitReturn, usize)>>>()?
+                    .into_iter()
                     .unzip();
 
                 macro_rules! new_rv_func {
@@ -1194,12 +1266,12 @@ impl Translator {
                         $name($r)
                     }};
                     (1, $name:path, $r:ident, $arg_returns:ident) => {{
-                        let a = $arg_returns.pop().unwrap().try_into().unwrap();
+                        let a = $arg_returns.pop().ok_or(MypsLexerError::Dummy)?.try_into()?;
                         $name($r, a)
                     }};
                     (2, $name:path, $r:ident, $arg_returns:ident) => {{
-                        let a = $arg_returns.pop().unwrap().try_into().unwrap();
-                        let b = $arg_returns.pop().unwrap().try_into().unwrap();
+                        let a = $arg_returns.pop().ok_or(MypsLexerError::Dummy)?.try_into()?;
+                        let b = $arg_returns.pop().ok_or(MypsLexerError::Dummy)?.try_into()?;
                         $name($r, a, b)
                     }};
                 }
@@ -1215,10 +1287,10 @@ impl Translator {
                 };
                 self.push_unit(unit_expr, comment.take());
 
-                (UnitReturn::Var(r), arg_depths.into_iter().sum::<usize>() + 1)
+                Ok((UnitReturn::Var(r), arg_depths.into_iter().sum::<usize>() + 1))
             }
             RValue::Var(k) => {
-                let unit_alias = self.lookup_alias(k).unwrap();
+                let unit_alias = self.lookup_alias(k)?;
                 let unit_return = match unit_alias {
                     UnitAlias::Num(unit_num) => UnitReturn::Num(unit_num),
                     UnitAlias::Dev(unit_dev) => UnitReturn::Dev(unit_dev),
@@ -1226,7 +1298,7 @@ impl Translator {
                     UnitAlias::Var(unit_var) => UnitReturn::Var(unit_var),
                 };
                 // self.update_lifetime_unitvar(&unit_var, line);
-                (unit_return, 0)
+                Ok((unit_return, 0))
                 // (self.reduce_alias(k).unwrap(), 0)
             }
         }
@@ -1240,7 +1312,7 @@ impl Translator {
         expr: Expr,
         unit_var: Option<UnitVar>,
         comment: &mut Option<String>,
-    ) -> (UnitNum, usize) {
+    ) -> MypsLexerResult<(UnitNum, usize)> {
 
         match expr {
             Expr::Unary { op, box rhs } => {
@@ -1256,8 +1328,8 @@ impl Translator {
                 // depth += 1;
                 // Translate the lhs and rhs expressions
                 // If they are num r-values the the depth is zero and the
-                let (a, d_a) = self.translate_expr(lhs, None, &mut None);
-                let (b, d_b) = self.translate_expr(rhs, None, &mut None);
+                let (a, d_a) = self.translate_expr(lhs, None, &mut None)?;
+                let (b, d_b) = self.translate_expr(rhs, None, &mut None)?;
                 depth += d_a + d_b;
 
                 fn bool_to_num(cond: bool) -> f64 {
@@ -1285,7 +1357,7 @@ impl Translator {
                             BinaryOp::NE => UnitNum::Lit(bool_to_num(l != r)),
                             _ => unreachable!("{:?}", op),
                         };
-                        (unit_num, depth)
+                        Ok((unit_num, depth))
                     }
                     _ => {
                         let r = self.unwrap_var(unit_var);
@@ -1308,7 +1380,7 @@ impl Translator {
                             _ => unreachable!("{:?}", op),
                         };
                         self.push_unit(unit_expr, comment.take());
-                        (r.into(), depth)
+                        Ok((r.into(), depth))
                     }
                 }
             }
@@ -1316,12 +1388,12 @@ impl Translator {
                 unreachable!("{:?} {:?} {:?}", cond, if_t, if_f);
             }
             Expr::RValue(rv) => {
-                let (rv_rtn, depth) = self.translate_r_value(rv, unit_var, comment);
+                let (rv_rtn, depth) = self.translate_r_value(rv, unit_var, comment)?;
                 match rv_rtn {
-                    UnitReturn::Num(num) => (num, depth),
+                    UnitReturn::Num(num) => Ok((num, depth)),
                     UnitReturn::Var(unit_var) => {
                         self.update_lifetime(unit_var);
-                        (UnitNum::Var(unit_var), depth)
+                        Ok((UnitNum::Var(unit_var), depth))
                     }
                     _ => unreachable!(),
                 }
@@ -1332,19 +1404,20 @@ impl Translator {
     // ============================================================================================
     // Translate items
     // ============================================================================================
-    fn translate_items(&mut self, items: Vec<Item>, mut first_comment: Option<String>) -> usize {
-        let total_depth = items.into_iter().fold(0, |depth, item| {
-            depth + self.translate_item(item, first_comment.take())
-        });
-        total_depth
+
+    fn translate_items(&mut self, items: Vec<Item>, mut first_comment: Option<String>) -> MypsLexerResult<usize> {
+        let mut depth = 0;
+        for item in items.into_iter() {
+            depth += self.translate_item(item, first_comment.take())?;
+        };
+        Ok(depth)
     }
 
     // ============================================================================================
     // Translate an item
     // ============================================================================================
 
-    fn translate_item(&mut self, item: Item, first_comment: Option<String>) -> usize {
-        let item_str = format!("{:?}", item);
+    fn translate_item(&mut self, item: Item, first_comment: Option<String>) -> MypsLexerResult<usize> {
         let Item {
             item_inner,
             comment,
@@ -1353,7 +1426,7 @@ impl Translator {
 
         let mut comment = first_comment.or(comment);
 
-        let depth = match item_inner {
+        match item_inner {
             ItemInner::Block(Block { branch, items }) => {
 
                 match branch {
@@ -1362,11 +1435,11 @@ impl Translator {
                     // Loop (infinitely)
                     // ============================================================================
                     Branch::Loop => {
-                        let depth = self.translate_items(items, None);
+                        let depth = self.translate_items(items, None)?;
                         let line = UnitLine::Lit(-(depth as i64));
                         let unit_expr = UnitExpr::new_jr(line);
                         self.push_unit(unit_expr, comment);
-                        depth + 1
+                        Ok(depth + 1)
                     }
                     // ============================================================================
                     // If/elif/else branching
@@ -1379,12 +1452,11 @@ impl Translator {
                             Branch::Elif(..) | Branch::Else(..) => {
                                 let tail_id = UnitLine::Indexed(id);
                                 let unit_expr = UnitExpr::new_jr(tail_id);
-                                let unit = if matches!(branch, Branch::Else(..)) {
-                                    Unit::new(unit_expr, comment.take())
+                                if matches!(branch, Branch::Else(..)) {
+                                    self.push_unit(unit_expr, comment.take());
                                 } else {
-                                    Unit::new(unit_expr, None)
+                                    self.push_unit(unit_expr, None);
                                 };
-                                self.units.push(unit);
                                 depth += 1;
                             }
                             _ => {}
@@ -1397,14 +1469,14 @@ impl Translator {
                         let cond_opt = match branch {
                             Branch::If(_, cond) | Branch::Elif(_, cond) => {
                                 let (i, num, cond_depth) =
-                                    self.translate_condition(cond, comment);
+                                    self.translate_condition(cond, comment)?;
                                 depth += cond_depth;
                                 Some((i, num))
                             }
                             _ => None,
                         };
                         // Translate branch body
-                        let body_depth = self.translate_items(items, None);
+                        let body_depth = self.translate_items(items, None)?;
                         depth += body_depth;
                         // (If/Elif)
                         if let Some((i, num)) = cond_opt {
@@ -1417,7 +1489,7 @@ impl Translator {
                         } else {
                             self.branch_tails.push(tail);
                         }
-                        depth
+                        Ok(depth)
                     }
                     // ============================================================================
                     // While loop
@@ -1426,11 +1498,11 @@ impl Translator {
                     Branch::While(cond) => {
                         let mut depth = 0;
 
-                        let (i, num, cond_depth) = self.translate_condition(cond, comment);
+                        let (i, num, cond_depth) = self.translate_condition(cond, comment)?;
                         depth += cond_depth;
 
                         // Translate branch body
-                        let body_depth = self.translate_items(items, None);
+                        let body_depth = self.translate_items(items, None)?;
                         depth += body_depth;
 
                         self.transform_condition(i, num, 1 + body_depth);
@@ -1441,7 +1513,7 @@ impl Translator {
                         self.push_unit(unit_expr, None);
                         depth += 1;
 
-                        depth
+                        Ok(depth)
                     }
 
                     // ============================================================================
@@ -1450,11 +1522,8 @@ impl Translator {
                     Branch::For(i, s, e, step_opt) => {
                         let mut depth = 0;
                         // (Start value expression)
-                        let (s_rtn, s_depth) = self.translate_expr(s, None, &mut None);
-                        let s_num = UnitNum::try_from(s_rtn).unwrap();
+                        let (s_num, s_depth) = self.translate_expr(s, None, &mut None)?;
                         depth += s_depth;
-                        // self.get_var(UnitAliasKey::try_from(s_num), true);
-                        // let i_var = UnitVar::try_from(s_num).unwrap();
 
                         let i_var = match s_num {
                             UnitNum::Lit(..) => {
@@ -1483,17 +1552,16 @@ impl Translator {
                         let i_num = UnitNum::Var(i_var);
 
                         // (Body)
-                        let mut inner_depth = self.translate_items(items, None);
+                        let mut inner_depth = self.translate_items(items, None)?;
 
                         // (End value expression)
-                        let (e_rtn, e_depth) = self.translate_expr(e, None, &mut None);
-                        let e_num = UnitNum::try_from(e_rtn).unwrap();
+                        let (e_num, e_depth) = self.translate_expr(e, None, &mut None)?;
                         inner_depth += e_depth;
 
                         // (Step value expression)
                         let step = if let Some(step_expr) = step_opt {
                             let (step_rtn, step_depth) =
-                                self.translate_expr(step_expr, None, &mut None);
+                                self.translate_expr(step_expr, None, &mut None)?;
                             inner_depth += step_depth;
                             UnitNum::try_from(step_rtn).unwrap()
                         } else {
@@ -1510,7 +1578,7 @@ impl Translator {
                         self.push_unit(unit_expr, comment);
                         depth += 1;
 
-                        depth + inner_depth
+                        Ok(depth + inner_depth)
                     }
                     // ============================================================================
                     // Function definitions
@@ -1535,10 +1603,10 @@ impl Translator {
                         let i = self.line_lookup[&name];
                         let line = self.units.len();
                         self.branch_tails[i] = line;
-                        let depth = 1 + self.translate_items(items, comment);
+                        let depth = 1 + self.translate_items(items, comment)?;
                         let unit_expr = UnitExpr::new_j(UnitLine::RA);
                         self.push_unit(unit_expr, None);
-                        depth
+                        Ok(depth)
                     }
                     _ => unreachable!("{:?}", branch),
                 }
@@ -1548,17 +1616,15 @@ impl Translator {
                 self.translate_statement(stmt, &mut comment)
             },
             // _ => unreachable!("{:?}", stmt),
-        };
-        // println!("{} {}", self.var_next_id, item_str);
-        depth
+        }
     }
 
     fn translate_condition(
         &mut self,
         cond: Expr,
         comment: Option<String>,
-    ) -> (usize, UnitNum, usize) {
-        let (rtn, mut depth) = self.translate_expr(cond, None, &mut None);
+    ) -> MypsLexerResult<(usize, UnitNum, usize)> {
+        let (rtn, mut depth) = self.translate_expr(cond, None, &mut None)?;
         let num = UnitNum::try_from(rtn).unwrap();
         if depth == 0
             || !self
@@ -1578,7 +1644,7 @@ impl Translator {
         //     self.var_lifetimes.pop();
         // }
         let i = self.units.len() - 1;
-        (i, num, depth)
+        Ok((i, num, depth))
     }
 
     // Helper to translate a condition of an if/elif/while block
@@ -1618,7 +1684,21 @@ impl Translator {
         &mut self,
         stmt: Statement,
         comment: &mut Option<String>,
-    ) -> usize {
+    ) -> MypsLexerResult<usize> {
+        let stmt_string = format!("{:#?}", stmt);
+        match self.translate_statement_helper(stmt, comment) {
+            Err(err) => {
+                Err(MypsLexerError::stmt_error(stmt_string, err))
+            },
+            depth @ _ => depth,
+        }
+    }
+
+    fn translate_statement_helper(
+        &mut self,
+        stmt: Statement,
+        comment: &mut Option<String>,
+    ) -> MypsLexerResult<usize> {
         match stmt {
             // ============================================================================
             // Assign a new alias
@@ -1654,7 +1734,7 @@ impl Translator {
                 let mut depth = 0;
 
                 for (l_value, r_value) in l_values.into_iter().zip(r_values.into_iter()) {
-                    depth += self.translate_assignment(l_value, r_value, comment);
+                    depth += self.translate_assignment(l_value, r_value, comment)?;
                 }
 
                 // let unit_vars = l_values.iter().map(|l_value| {
@@ -1686,17 +1766,17 @@ impl Translator {
                 //     depth += rv_depth + self.translate_assignment(lv, rv_rtn, comment);
                 // }
 
-                depth
+                Ok(depth)
             }
             // ============================================================================
             // Assign to a var itself plus/minus/times/divide/mod a value
             // ============================================================================
             Statement::AssignSelf(op, l_value, r_value) => {
-                let unit_alias_key: UnitAliasKey = l_value.try_into().unwrap();
-                let r = self.lookup_var(unit_alias_key).unwrap();
+                let unit_alias_key = UnitAliasKey::try_from(l_value)?;
+                let r = self.lookup_var(unit_alias_key)?;
                 let a = UnitNum::Var(r);
 
-                let (rv_rtn, rv_depth) = self.translate_r_value(r_value, Some(r), comment);
+                let (rv_rtn, rv_depth) = self.translate_r_value(r_value, Some(r), comment)?;
                 let b = match rv_rtn {
                     UnitReturn::Num(unit_num) => unit_num,
                     UnitReturn::Var(unit_var) => UnitNum::Var(unit_var),
@@ -1713,7 +1793,7 @@ impl Translator {
 
                 self.push_unit(unit_expr, comment.take());
 
-                rv_depth + 1
+                Ok(rv_depth + 1)
                 // let rv = match self.translate
                 // match op {
                 // }
@@ -1722,17 +1802,22 @@ impl Translator {
             // A lone function call
             // ============================================================================
             Statement::FunctionCall(FunctionCall::Nullary(name)) => {
-                unreachable!("{:?}", name);
+                let unit_expr = UnitExpr::try_from_pair(name, vec![])?;
+                self.push_unit(unit_expr, comment.take());
+                Ok(1)
             }
             Statement::FunctionCall(FunctionCall::Unary(name, r_value)) => {
-                unreachable!("{:?} {:?}", name, r_value);
+                let (rv_return, rv_depth) = self.translate_r_value(r_value, None, &mut None)?;
+                let unit_expr = UnitExpr::try_from_pair(name, vec![rv_return.into()])?;
+                self.push_unit(unit_expr, comment.take());
+                Ok(1 + rv_depth)
             }
             Statement::FunctionCall(FunctionCall::User(name)) => {
                 let i = self.line_lookup.get(&name).unwrap();
                 let line = UnitLine::Indexed(*i);
                 let unit_expr = UnitExpr::new_jal(line);
                 self.push_unit(unit_expr, comment.take());
-                1
+                Ok(1)
             }
             //     let alias = self.var_lookup.get(&name).unwrap();
             //     match alias {
@@ -1745,6 +1830,18 @@ impl Translator {
             //         _ => unreachable!("{:?}", alias),
             //     }
             //     1
+            Statement::Empty => {
+                let depth = if self.conf.show_empty {
+                    self.push_unit(UnitExpr::Empty, comment.take());
+                    1
+                } else if self.conf.show_empty_comments && comment.is_some() {
+                    self.push_unit(UnitExpr::Empty, comment.take());
+                    1
+                } else {
+                    0
+                };
+                Ok(depth)
+            }
         }
     }
 
@@ -1757,14 +1854,14 @@ impl Translator {
         l_value: LValue,
         r_value: RValue,
         comment: &mut Option<String>,
-        ) -> usize {
+        ) -> MypsLexerResult<usize> {
         let mut depth = 0;
 
         match l_value {
             LValue::Var(k, fix) => {
                 let unit_var = self.get_var(&k, fix);
 
-                let (rv_return, rv_depth) = self.translate_r_value(r_value, Some(unit_var), comment);
+                let (rv_return, rv_depth) = self.translate_r_value(r_value, Some(unit_var), comment)?;
                 depth += rv_depth;
 
                 match rv_return {
@@ -1796,8 +1893,7 @@ impl Translator {
                             // - insert an alias from the var to the number, and
                             // - insert an alias from the name to the var
                             let unit_expr = UnitExpr::new_move(unit_var, unit_num);
-                            let unit = Unit::new(unit_expr, comment.take());
-                            self.units.push(unit);
+                            self.push_unit(unit_expr, comment.take());
                             self.insert_alias(unit_var, UnitAlias::Num(unit_num));
                             self.insert_alias(k, UnitAlias::Var(unit_var));
                             depth += 1;
@@ -1811,7 +1907,7 @@ impl Translator {
                 }
             },
             LValue::Param(dev, param) => {
-                let (rv_return, rv_depth) = self.translate_r_value(r_value, None, comment);
+                let (rv_return, rv_depth) = self.translate_r_value(r_value, None, comment)?;
                 if rv_depth == 0 {
                     // self.var_next_id -= 1;
                     // self.var_lifetimes.pop();
@@ -1828,18 +1924,14 @@ impl Translator {
 
                         let unit_expr = match dev {
                             Dev::Lit(box id_rv) => {
-                                // let (rtn, rv_depth) =
-                                //     self.translate_r_value(id_rv, None);
-                                let (unit_dev, rv_depth) = self.get_dev(id_rv).unwrap();
-                                // let unit_dev = self.lookup_dev(rtn).unwrap();
-                                // let unit_dev = UnitDev::try_from(rtn).unwrap();
+                                let (unit_dev, rv_depth) = self.get_dev(id_rv)?;
                                 depth += rv_depth;
                                 UnitExpr::new_s(unit_dev, param, unit_num)
                             }
                             Dev::Net(box hash_rv) => {
                                 let (rtn, rv_depth) =
-                                    self.translate_r_value(hash_rv, None, &mut None);
-                                let unit_dev_net = UnitDevNet::try_from(rtn).unwrap();
+                                    self.translate_r_value(hash_rv, None, &mut None)?;
+                                let unit_dev_net = UnitDevNet::try_from(rtn)?;
                                 depth += rv_depth;
                                 UnitExpr::new_sb(unit_dev_net, param, unit_num)
                             }
@@ -1861,147 +1953,13 @@ impl Translator {
                             }
                             Dev::DB => UnitExpr::new_s(UnitDev::DB, param, unit_num),
                         };
-                        let unit = Unit::new(unit_expr, comment.take());
-                        self.units.push(unit);
+                        self.push_unit(unit_expr, comment.take());
                         depth += 1;
                     }
                     _ => unreachable!(),
                 }
             },
         }
-
-        // match r_value_rtn {
-        //     // UnitReturn::Dev(unit_dev) => {
-        //     //     let (k, fix) = match l_value {
-        //     //         LValue::Var(k, fix) => (k, fix),
-        //     //         LValue::Param(..) => unreachable!(),
-        //     //     };
-
-        //     //     if fix {
-        //     //         let unit_expr = UnitExpr::new_alias(k.clone(), unit_dev);
-        //     //         self.push_unit(unit_expr, comment.take());
-        //     //         depth += 1;
-        //     //     }
-        //     //     let alias = UnitAlias::Dev(unit_dev);
-        //     //     self.insert_alias(k, alias);
-        //     // }
-        //     // UnitReturn::Net(unit_dev_net) => {
-        //     //     let (k, _fix) = match l_value {
-        //     //         LValue::Var(k, fix) => (k.clone(), fix),
-        //     //         LValue::Param(..) => unreachable!(),
-        //     //     };
-        //     //     let alias = UnitAlias::Net(unit_dev_net);
-        //     //     self.insert_alias(k, alias);
-        //     // }
-        //     UnitReturn::Num(..) | UnitReturn::Var(..) => {
-        //         let unit_num = match r_value_rtn {
-        //             UnitReturn::Num(unit_num) => unit_num,
-        //             UnitReturn::Var(unit_var) => UnitNum::Var(unit_var),
-        //             _ => unreachable!(),
-        //         };
-
-        //         match l_value {
-        //             // LValue::Var(k, fix) => {
-        //             //     let unit_var = self.get_var(k.clone(), fix);
-        //             //     if fix {
-        //             //         // If marked fix
-        //             //         // - insert an alias from the var to the number, and
-        //             //         // - insert an alias from the name to the var
-        //             //         let unit_expr = UnitExpr::new_move(unit_var, unit_num);
-        //             //         let unit = Unit::new(unit_expr, comment.take());
-        //             //         self.units.push(unit);
-        //             //         self.insert_alias(unit_var, UnitAlias::Num(unit_num));
-        //             //         self.insert_alias(k, UnitAlias::Var(unit_var));
-        //             //         depth += 1;
-        //             //     } else {
-        //             //         // Else if not marked fix
-        //             //         // - insert an alias from the name to the number
-        //             //         self.insert_alias(k, UnitAlias::Num(unit_num));
-        //             //     }
-        //             //     // self.aliases.get(&k);
-        //             // }
-        //             LValue::Param(dev, param) => {
-        //                 // fn test(
-        //                 //     translator: &mut Translator,
-        //                 //     dev: Dev,
-        //                 //     param: String,
-        //                 //     unit_num: UnitNum,
-        //                 //     comment: Option<String>,
-        //                 //     line: usize,
-        //                 // ) -> usize {
-        //                 //     let unit_expr = match dev {
-        //                 //         Dev::Lit(box id_rv) => {
-        //                 //             let (rtn, rv_depth) = self.translate_r_value(id_rv, line + depth);
-        //                 //             let unit_dev = UnitDev::try_from(rtn).unwrap();
-        //                 //             depth += rv_depth;
-        //                 //             UnitExpr::new_s(unit_dev, param, unit_num)
-        //                 //         },
-        //                 //         Dev::Net(box hash_rv) => {
-        //                 //             let (rtn, rv_depth) = self.translate_r_value(hash_rv, line + depth);
-        //                 //             let unit_dev_net = UnitDevNet::try_from(rtn).unwrap();
-        //                 //             depth += rv_depth;
-        //                 //             UnitExpr::new_sb(unit_dev_net, param, unit_num)
-        //                 //         },
-        //                 //         Dev::Var(k) => {
-        //                 //             let alias = self.aliases.get(&k.into());
-        //                 //             match alias {
-        //                 //                 Some(UnitAlias::Dev(unit_dev)) => {
-        //                 //                     UnitExpr::new_s(*unit_dev, param, unit_num)
-        //                 //                 },
-        //                 //                 Some(UnitAlias::Net(unit_dev_net)) => {
-        //                 //                     UnitExpr::new_sb(*unit_dev_net, param, unit_num)
-        //                 //                 },
-        //                 //                 _ => unreachable!("{:?}", alias),
-        //                 //             }
-        //                 //         },
-        //                 //         Dev::DB => {
-        //                 //             UnitExpr::new_s(UnitDev::DB, param, unit_num)
-        //                 //         },
-        //                 //     };
-        //                 // }
-
-        //                 let unit_expr = match dev {
-        //                     Dev::Lit(box id_rv) => {
-        //                         // let (rtn, rv_depth) =
-        //                         //     self.translate_r_value(id_rv, None);
-        //                         let (unit_dev, rv_depth) = self.get_dev(id_rv).unwrap();
-        //                         // let unit_dev = self.lookup_dev(rtn).unwrap();
-        //                         // let unit_dev = UnitDev::try_from(rtn).unwrap();
-        //                         depth += rv_depth;
-        //                         UnitExpr::new_s(unit_dev, param, unit_num)
-        //                     }
-        //                     Dev::Net(box hash_rv) => {
-        //                         let (rtn, rv_depth) =
-        //                             self.translate_r_value(hash_rv, None, &mut None);
-        //                         let unit_dev_net = UnitDevNet::try_from(rtn).unwrap();
-        //                         depth += rv_depth;
-        //                         UnitExpr::new_sb(unit_dev_net, param, unit_num)
-        //                     }
-        //                     Dev::Var(k) => {
-        //                         let alias = self.aliases.get(&k.into());
-        //                         match alias {
-        //                             Some(UnitAlias::Dev(unit_dev)) => {
-        //                                 UnitExpr::new_s(*unit_dev, param, unit_num)
-        //                             }
-        //                             Some(UnitAlias::Net(unit_dev_net)) => {
-        //                                 UnitExpr::new_sb(*unit_dev_net, param, unit_num)
-        //                             }
-        //                             Some(UnitAlias::Num(hash)) => {
-        //                                 let unit_dev_net = UnitDevNet::Num(*hash);
-        //                                 UnitExpr::new_sb(unit_dev_net, param, unit_num)
-        //                             }
-        //                             _ => unreachable!("{:?}", alias),
-        //                         }
-        //                     }
-        //                     Dev::DB => UnitExpr::new_s(UnitDev::DB, param, unit_num),
-        //                 };
-        //                 let unit = Unit::new(unit_expr, comment.take());
-        //                 self.units.push(unit);
-        //                 depth += 1;
-        //             }
-        //         }
-        //     }
-        // }
-        depth
+        Ok(depth)
     }
 }

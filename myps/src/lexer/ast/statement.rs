@@ -15,6 +15,7 @@ pub enum Statement {
     AssignValue(Vec<LValue>, Vec<RValue>),
     AssignSelf(BinaryOp, LValue, RValue),
     FunctionCall(FunctionCall),
+    Empty,
 }
 
 impl Statement {
@@ -40,6 +41,7 @@ impl Statement {
                     }
                 }
             }
+            Self::Empty => {},
         }
         Ok(())
     }
@@ -110,7 +112,6 @@ impl<'i> AstNode<'i, Rule, MypsParser, MypsLexerError> for Statement {
                 // let r_value = RValue::Expr(Box::new(expr));
                 // let stmt = Self::AssignValue(vec![l_value], vec![r_value]);
                 let stmt = Self::AssignSelf(op, l_value, r_value);
-                // println!("stmt::assign_self -> {:?}", stmt);
                 Ok(stmt)
             }
             Rule::stmt_func_nullary => {
