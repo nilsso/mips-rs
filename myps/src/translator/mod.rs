@@ -1279,10 +1279,9 @@ impl Translator {
                 let r = self.unwrap_var(unit_var);
                 let unit_expr = match rv_func {
                     RVFunc::Trunc => new_rv_func!(1, UnitExpr::new_trunc, r, arg_returns),
-                    // RVFunc::Trunc => {
-                    //     let a = arg_returns.pop().unwrap().try_into().unwrap();
-                    //     UnitExpr::new_trunc(r, a)
-                    // },
+                    // Stack
+                    RVFunc::Peek  => new_rv_func!(0, UnitExpr::new_peek,  r, arg_returns),
+                    RVFunc::Pop   => new_rv_func!(0, UnitExpr::new_pop,   r, arg_returns),
                     _ => unreachable!("{:?}", rv_func),
                 };
                 self.push_unit(unit_expr, comment.take());
