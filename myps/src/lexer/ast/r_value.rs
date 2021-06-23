@@ -44,6 +44,7 @@ pub enum RVFunc {
     // Nullary
     Peek,
     Pop,
+    Rand,
     // Unary
     Abs,
     Acos,
@@ -54,7 +55,6 @@ pub enum RVFunc {
     Exp,
     Floor,
     Ln,
-    Rand,
     Round,
     Sin,
     Sqrt,

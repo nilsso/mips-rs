@@ -84,22 +84,22 @@ fn main() {
     // println!("{:#?}", translator);
     // println!("# ==========================");
 
-    for (i, unit) in translator.units.iter().enumerate() {
+    // for (i, unit) in translator.units.iter().enumerate() {
         // println!("{:?}", unit);
-        println!("{}: {}", i, unit);
+        // println!("{}: {}", i, unit);
         // println!("{}", unit);
-    }
-    println!("# ==========================");
+    // }
+    // println!("# ==========================");
     // for (i, lifetime) in translator.var_lifetimes.iter().enumerate() {
     //     println!("{} : {:?}", i, lifetime);
     // }
     // println!("# ==========================");
-    print_inteference_graph(&translator);
-    println!("# ==========================");
+    // print_inteference_graph(&translator);
+    // println!("# ==========================");
     translator.optimize_registers();
     for (i, unit) in translator.units.iter().enumerate() {
         // println!("{:?}", unit);
-        println!("{}: {}", i, unit);
-        // println!("{}", unit);
+        // println!("{}: {}", i, unit);
+        println!("{}", unit);
     }
 }

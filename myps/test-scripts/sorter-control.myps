@@ -3,16 +3,17 @@ requestDownLMem = d1 # Downward request handler (sorter IC housing)
 requestDownRMem = d2 # This sorter's fabricator controller (IC housing)
 requestUpMem    = d3 # Upward request handler (IC housing)
 
-loop: # main loop
-    fix wordDownL = requestDownLMem.Setting
-    fix wordDownR = requestDownRMem.Setting
+loop:
+    fix wordDownL = requestDownLMem.Setting # Get downward requests
+    fix wordDownR = requestDownRMem.Setting # Get this sorter's fabricator request
+
+    # Sort occupant:
     hash = sorter(0).OccupantHash
     if hash > 0:
+        fix i = 0
+        sorter.Output = trunc(wordDownR / i) % 2
         # TODO: get bit position from occupant hash, get bit from right request, set output
-        x = 0
-        push(123)
-        x = peek()
-        x = pop()
+
     # Send downward requests up:
     fix wordOr = 0
     # Bit-or the down-left and down-right request words

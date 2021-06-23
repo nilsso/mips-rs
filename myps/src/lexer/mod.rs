@@ -162,37 +162,39 @@ fn compile_program_item(
 
     for (indent, item_opt, comment_opt) in lines.into_iter() {
         // Handle indentation
-        if expect_indent {
-            // Expecting increase in indent because previous line was a branch marker
-            if indent <= curr_indent {
-                let err = MypsLexerError::expected_indent(curr_indent + 1);
-                unreachable!("{:?}", err);
-                // return Err(err);
-            } else {
-                // Push this new indent level
-                indent_stack.push(indent);
-                curr_indent = indent;
-                expect_indent = false;
-            }
-        } else {
-            if indent < curr_indent {
-                // Drop in indent level means the end of a branch
-                while indent < *indent_stack.last().unwrap() {
-                    nest_next_block(
-                        &mut block_items,
-                        &mut branches,
-                        &mut functions,
-                        &mut indent_stack,
-                    )?;
-                }
-                curr_indent = *indent_stack.last().unwrap();
-                if indent != curr_indent {
-                    // If now the item and stack levels are different,
-                    // this item level was never on the stack before
-                    let err = MypsLexerError::wrong_indent(curr_indent, indent);
+        if item_opt.is_some() {
+            if expect_indent {
+                // Expecting increase in indent because previous line was a branch marker
+                if indent <= curr_indent {
+                    let err = MypsLexerError::expected_indent(curr_indent + 1);
                     unreachable!("{:?}", err);
                     // return Err(err);
                 } else {
+                    // Push this new indent level
+                    indent_stack.push(indent);
+                    curr_indent = indent;
+                    expect_indent = false;
+                }
+            } else {
+                if indent < curr_indent {
+                    // Drop in indent level means the end of a branch
+                    while indent < *indent_stack.last().unwrap() {
+                        nest_next_block(
+                            &mut block_items,
+                            &mut branches,
+                            &mut functions,
+                            &mut indent_stack,
+                        )?;
+                    }
+                    curr_indent = *indent_stack.last().unwrap();
+                    if indent != curr_indent {
+                        // If now the item and stack levels are different,
+                        // this item level was never on the stack before
+                        let err = MypsLexerError::wrong_indent(curr_indent, indent);
+                        unreachable!("{:?}\n{:?}\n{:?}", err, indent_stack, item_opt);
+                        // return Err(err);
+                    } else {
+                    }
                 }
             }
         }
@@ -281,7 +283,6 @@ fn compile_program_item(
 pub fn lex_program_pair(
     program_pair: Pair<Rule>,
 ) -> MypsLexerResult<(Item, HashMap<String, (Block, Option<String>)>)> {
-    println!("{:#?}", program_pair);
     let (program_item, functions) = compile_program_item(program_pair).unwrap();
 
     let mut aliases = HashSet::new();

@@ -1,11 +1,8 @@
 use std::collections::HashMap;
 
 use itertools::Itertools;
-use petgraph::data::FromElements;
-use petgraph::stable_graph::{NodeIndex, StableGraph, StableUnGraph};
+use petgraph::stable_graph::{NodeIndex, StableGraph};
 use petgraph::Undirected;
-
-use crate::translator::Translator;
 
 type Graph<T> = StableGraph<T, (), Undirected, usize>;
 type Stack = Vec<(usize, Vec<usize>)>;
